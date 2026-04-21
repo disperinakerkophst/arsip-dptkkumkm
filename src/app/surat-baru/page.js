@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { databases, DATABASE_ID, COLLECTION_SURAT_ID } from '@/lib/appwrite';
 import { ID, Query } from 'appwrite';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { logActivity } from '@/lib/audit';
 
 const JENIS_SURAT = [
   { label: 'Surat Keputusan (SK)', value: 'SK' },
@@ -44,6 +46,7 @@ const PEMBUAT_SURAT = [
 
 export default function SuratBaru() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState({
     jenisSurat: 'SK',
     tanggalSurat: new Date().toISOString().split('T')[0],
@@ -60,6 +63,13 @@ export default function SuratBaru() {
   const [isBooking, setIsBooking] = useState(false);
 
   const [duplicateWarning, setDuplicateWarning] = useState('');
+
+  // Auth Protection Redirect
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   const padZero = (num) => num.toString().padStart(3, '0');
 
@@ -147,6 +157,10 @@ export default function SuratBaru() {
   const displayNoUrut = formData.noUrut || '...';
   const fullNomorSurat = `${formData.klasifikasiSurat}/${displayNoUrut}/${formData.jenisSurat}/${formData.pembuatSurat}/DPTKKUMKM/${inputYear}`;
 
+  if (authLoading || !user) {
+    return <div style={{ padding: '3rem', textAlign: 'center' }}>Memverifikasi otorisasi Admin...</div>;
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (duplicateWarning) {
@@ -159,7 +173,6 @@ export default function SuratBaru() {
     setSuccess('');
 
     try {
-      if (!isBooking && !file) throw new Error("File surat wajib diupload, atau centang mode 'Hanya Booking Nomor'.");
       if (!formData.noUrut) throw new Error("Nomor urut wajib diisi");
 
       // Final check for duplicates before save
@@ -206,6 +219,8 @@ export default function SuratBaru() {
         }
 
         linkFile = uploadResult.link;
+      } else if (!isBooking && !file) {
+        throw new Error("File surat wajib diupload, atau centang mode 'Hanya Booking Nomor'.");
       }
 
       // 3. Save to Appwrite
@@ -226,6 +241,8 @@ export default function SuratBaru() {
           linkFile: linkFile
         }
       );
+
+      await logActivity(user?.name, `Membuat arsip surat baru (${fullNomorSurat}) mode: ${isBooking ? 'Booking' : 'Lengkap'}`);
 
       setSuccess(`Surat berhasil disimpan dengan Nomor: ${fullNomorSurat}`);
       setTimeout(() => router.push('/'), 2000);
@@ -362,6 +379,7 @@ export default function SuratBaru() {
             ) : (
               <input 
                 type="file" 
+                accept=".pdf,application/pdf"
                 onChange={handleFileChange} 
                 style={{ display: 'block', color: 'var(--text-main)', marginTop: '0.5rem' }}
                 required={!isBooking}

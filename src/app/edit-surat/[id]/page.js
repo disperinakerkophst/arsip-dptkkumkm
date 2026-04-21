@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { databases, DATABASE_ID, COLLECTION_SURAT_ID } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import { useRouter, useParams } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { logActivity } from '@/lib/audit';
 
 const JENIS_SURAT = [
   { label: 'Surat Keputusan (SK)', value: 'SK' },
@@ -43,6 +45,7 @@ const PEMBUAT_SURAT = [
 ];
 
 export default function EditSurat() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const id = params?.id;
@@ -65,6 +68,12 @@ export default function EditSurat() {
   const [duplicateWarning, setDuplicateWarning] = useState('');
 
   const padZero = (num) => num.toString().padStart(3, '0');
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (!id) return;
@@ -214,6 +223,8 @@ export default function EditSurat() {
         }
       );
 
+      await logActivity(user?.name, `Mengubah data/memperbarui file surat (${fullNomorSurat})`);
+
       setSuccess(`Surat berhasil diupdate dengan Nomor: ${fullNomorSurat}`);
       setTimeout(() => router.push('/'), 2000);
 
@@ -224,6 +235,10 @@ export default function EditSurat() {
       setLoading(false);
     }
   };
+
+  if (authLoading || !user) {
+    return <div style={{ padding: '3rem', textAlign: 'center' }}>Memverifikasi otorisasi Admin...</div>;
+  }
 
   if (loadingData) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Memuat data...</div>;
@@ -345,6 +360,7 @@ export default function EditSurat() {
             )}
             <input 
               type="file" 
+              accept=".pdf,application/pdf"
               onChange={handleFileChange} 
               style={{ display: 'block', color: 'var(--text-main)', marginTop: '0.5rem' }}
             />

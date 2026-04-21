@@ -103,6 +103,15 @@ a:hover {
   display: block;
 }
 
+.sidebar-brand-link {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.sidebar-brand-link:hover {
+  opacity: 0.8;
+  transform: scale(1.02);
+}
+
 .subtitle-l2 {
   font-size: 0.90rem;
   color: var(--text-muted);
@@ -156,7 +165,7 @@ a:hover {
   margin-top: auto;
   font-size: 0.65rem;
   color: var(--text-muted);
-  opacity: 0.35;
+  opacity: 0.55;
   text-align: left;
   padding: 2.5rem 0; /* Tambah padding agar tidak tertutup controller */
   line-height: 1.4;

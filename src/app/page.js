@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { databases, DATABASE_ID, COLLECTION_SURAT_ID } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { logActivity } from '@/lib/audit';
 
 const JENIS_SURAT = [
   { label: 'Semua Jenis', value: '' },
@@ -26,6 +28,7 @@ const JENIS_SURAT = [
 const ITEMS_PER_PAGE = 20;
 
 export default function Home() {
+  const { user } = useAuth();
   const [suratList, setSuratList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -102,6 +105,18 @@ export default function Home() {
     }
   };
 
+  const handleDelete = async (id, nomorSurat) => {
+    if(!window.confirm('Yakin ingin menghapus arsip surat ini secara permanen?')) return;
+    try {
+      await databases.deleteDocument(DATABASE_ID, COLLECTION_SURAT_ID, id);
+      await logActivity(user?.name, `Menghapus dokumen surat dengan Nomor: ${nomorSurat || id}`);
+      fetchSurat(page);
+    } catch(e) {
+      console.error(e);
+      alert('Gagal menghapus surat');
+    }
+  };
+
   const formatDate = (dateString) => {
     const d = new Date(dateString);
     return new Intl.DateTimeFormat('id-ID', {
@@ -148,13 +163,15 @@ export default function Home() {
             Kelola dan cari arsip surat keluar dinas secara efisien.
           </p>
         </div>
-        <Link href="/surat-baru" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto', padding: '0.75rem 1.25rem' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          Tambah Surat Baru
-        </Link>
+        {user && (
+          <Link href="/surat-baru" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: 'auto', padding: '0.75rem 1.25rem' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Tambah Surat Baru
+          </Link>
+        )}
       </div>
 
       {/* SEARCH & FILTERS BAR */}
@@ -277,17 +294,28 @@ export default function Home() {
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="btn-primary"
-                              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}
+                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', whiteSpace: 'nowrap', width: 'auto', display: 'inline-block' }}
                             >
                               Berkas
                             </a>
-                            <Link 
-                              href={`/edit-surat/${surat.$id}`}
-                              className="badge"
-                              style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', whiteSpace: 'nowrap', width: 'auto', display: 'inline-block', border: '1px solid var(--primary)', color: 'var(--primary)', background: 'transparent', textDecoration: 'none' }}
-                            >
-                              Edit
-                            </Link>
+                            {user && (
+                              <>
+                                <Link 
+                                  href={`/edit-surat/${surat.$id}`}
+                                  className="badge"
+                                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', whiteSpace: 'nowrap', width: 'auto', display: 'inline-block', border: '1px solid var(--primary)', color: 'var(--primary)', background: 'transparent', textDecoration: 'none' }}
+                                >
+                                  Edit
+                                </Link>
+                                <button
+                                  onClick={() => handleDelete(surat.$id)}
+                                  className="badge"
+                                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', whiteSpace: 'nowrap', width: 'auto', display: 'inline-block', border: '1px solid #ff4444', color: '#ff4444', background: 'transparent', cursor: 'pointer' }}
+                                >
+                                  Hapus
+                                </button>
+                              </>
+                            )}
                           </>
                         ) : (
                           <>
@@ -304,13 +332,24 @@ export default function Home() {
                             }}>
                               Booking
                             </span>
-                            <Link 
-                              href={`/edit-surat/${surat.$id}`}
-                              className="btn-primary"
-                              style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', whiteSpace: 'nowrap', width: 'auto', display: 'inline-block', backgroundColor: '#ffc107', color: '#000', fontWeight: 'bold' }}
-                            >
-                              Lengkapi
-                            </Link>
+                            {user && (
+                              <>
+                                <Link 
+                                  href={`/edit-surat/${surat.$id}`}
+                                  className="btn-primary"
+                                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', whiteSpace: 'nowrap', width: 'auto', display: 'inline-block', backgroundColor: '#ffc107', color: '#000', fontWeight: 'bold' }}
+                                >
+                                  Lengkapi
+                                </Link>
+                                <button
+                                  onClick={() => handleDelete(surat.$id)}
+                                  className="badge"
+                                  style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', whiteSpace: 'nowrap', width: 'auto', display: 'inline-block', border: '1px solid #ff4444', color: '#ff4444', background: 'transparent', cursor: 'pointer' }}
+                                >
+                                  Hapus
+                                </button>
+                              </>
+                            )}
                           </>
                         )}
                       </div>
