@@ -4,6 +4,7 @@ import { account, databases, DATABASE_ID, COLLECTION_USERS_ID } from '@/lib/appw
 import { ID, Query } from 'appwrite';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { logActivity } from '@/lib/audit';
 
 export default function PenggunaPage() {
   const { user, role, loading: authLoading } = useAuth();
@@ -16,6 +17,7 @@ export default function PenggunaPage() {
   // Registration Form State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -59,42 +61,91 @@ export default function PenggunaPage() {
     }
   };
 
-  const handleRegister = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
     setSuccessMsg('');
 
     try {
-      // 1. Appwrite Auth Create (Tergantung konfigurasi Appwrite Server, metode klien ini mungkin dibatasi)
-      // Disarankan backend logic untuk meminimalisasi konflik, namun ini implementasi klien Appwrite.
-      const newAccount = await account.create(
-        ID.unique(),
-        formData.email,
-        formData.password,
-        formData.username
-      );
+      if (editingId) {
+        // Edit Mode
+        await databases.updateDocument(
+          DATABASE_ID,
+          COLLECTION_USERS_ID,
+          editingId,
+          {
+            nama: formData.username,
+            role: formData.role
+          }
+        );
+        await logActivity(user?.name, `Mengubah data pengguna: ${formData.username} menjadi role ${formData.role}`);
+        setSuccessMsg(`Berhasil memperbarui data Admin: ${formData.username}`);
+        setEditingId(null);
+        setFormData({ username: '', email: '', password: '', role: 'admin' });
+        fetchUsers();
+      } else {
+        // Create Mode
+        const newAccount = await account.create(
+          ID.unique(),
+          formData.email,
+          formData.password,
+          formData.username
+        );
 
-      // 2. Simpan profil ke Collection Users
-      await databases.createDocument(
-        DATABASE_ID,
-        COLLECTION_USERS_ID,
-        ID.unique(),
-        {
-          userId: newAccount.$id,
-          nama: formData.username,
-          role: formData.role
-        }
-      );
+        await databases.createDocument(
+          DATABASE_ID,
+          COLLECTION_USERS_ID,
+          ID.unique(),
+          {
+            userId: newAccount.$id,
+            nama: formData.username,
+            role: formData.role
+          }
+        );
+        await logActivity(user?.name, `Menambahkan pengguna baru: ${formData.username} dengan role ${formData.role}`);
 
-      setSuccessMsg(`Berhasil mendaftarkan Admin: ${formData.username}`);
-      setFormData({ username: '', email: '', password: '', role: 'admin' });
-      fetchUsers(); // Refresh Tabel
+        setSuccessMsg(`Berhasil mendaftarkan Admin: ${formData.username}`);
+        setFormData({ username: '', email: '', password: '', role: 'admin' });
+        fetchUsers();
+      }
     } catch (err) {
-      console.error("Gagal mendaftar:", err);
-      setError(err.message || 'Gagal mendaftarkan user baru.');
+      console.error("Gagal menyimpan pengguna:", err);
+      setError(err.message || 'Gagal menyimpan data user.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = (u) => {
+    setEditingId(u.$id);
+    setFormData({
+      username: u.nama,
+      email: '', // Not editable via this simple client side UI
+      password: '',
+      role: u.role
+    });
+    setSuccessMsg('');
+    setError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setFormData({ username: '', email: '', password: '', role: 'admin' });
+    setSuccessMsg('');
+    setError('');
+  };
+
+  const handleDelete = async (u) => {
+    if(!window.confirm(`Yakin ingin mencabut hak akses '${u.nama}' secara permanen? Dokumen profil akan dihapus.`)) return;
+    try {
+      await databases.deleteDocument(DATABASE_ID, COLLECTION_USERS_ID, u.$id);
+      await logActivity(user?.name, `Menghapus akun pengguna: ${u.nama} (${u.role})`);
+      setSuccessMsg(`Berhasil menghapus hak akses admin: ${u.nama}`);
+      fetchUsers();
+    } catch(err) {
+      console.error(err);
+      alert('Gagal menghapus pengguna.');
     }
   };
 
@@ -118,14 +169,16 @@ export default function PenggunaPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) minmax(400px, 2fr)', gap: '2rem' }}>
         
-        {/* Form Tambah Admin */}
+        {/* Form Tambah/Edit Admin */}
         <div className="card" style={{ alignSelf: 'start' }}>
-          <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginTop: 0 }}>Tambah Pengguna</h3>
+          <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginTop: 0 }}>
+            {editingId ? 'Edit Pengguna' : 'Tambah Pengguna'}
+          </h3>
           
           {error && <div className="alert alert-error" style={{ fontSize: '0.85rem' }}>{error}</div>}
           {successMsg && <div className="alert alert-success" style={{ fontSize: '0.85rem' }}>{successMsg}</div>}
 
-          <form onSubmit={handleRegister}>
+          <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label>Panggilan Username</label>
               <input 
@@ -137,24 +190,26 @@ export default function PenggunaPage() {
               />
             </div>
             
-            <div className="form-group">
+            <div className="form-group" style={{ display: editingId ? 'none' : 'block' }}>
               <label>Email Pengguna</label>
               <input 
                 type="email" 
                 value={formData.email} 
                 onChange={e => setFormData({...formData, email: e.target.value})} 
                 placeholder="admin@hst.go.id" 
-                required 
+                required={!editingId}
+                disabled={editingId}
               />
             </div>
             
-            <div className="form-group">
+            <div className="form-group" style={{ display: editingId ? 'none' : 'block' }}>
               <label>Sandi Rahasia</label>
               <input 
                 type="password" 
                 value={formData.password} 
                 onChange={e => setFormData({...formData, password: e.target.value})} 
-                required 
+                required={!editingId}
+                disabled={editingId}
                 minLength={8}
                 placeholder="Minimal 8 karakter"
               />
@@ -171,9 +226,16 @@ export default function PenggunaPage() {
               </select>
             </div>
 
-            <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ width: '100%', marginTop: '0.5rem' }}>
-              {isSubmitting ? 'Memproses...' : 'Daftarkan Sistem'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ flex: 1 }}>
+                {isSubmitting ? 'Memproses...' : (editingId ? 'Simpan Perubahan' : 'Daftarkan Sistem')}
+              </button>
+              {editingId && (
+                <button type="button" onClick={handleCancelEdit} style={{ flex: 1, padding: '0.75rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+                  Batal
+                </button>
+              )}
+            </div>
           </form>
         </div>
 
@@ -209,7 +271,18 @@ export default function PenggunaPage() {
                         </span>
                       </td>
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Otomatis aktif</span>
+                        <button 
+                          onClick={() => handleEdit(u)} 
+                          style={{ background: 'transparent', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '0.3rem 0.6rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', marginRight: '0.5rem' }}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(u)} 
+                          style={{ background: 'transparent', border: '1px solid var(--error)', color: 'var(--error)', padding: '0.3rem 0.6rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
+                        >
+                          Hapus
+                        </button>
                       </td>
                     </tr>
                   ))}

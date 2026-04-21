@@ -106,14 +106,21 @@ export default function Home() {
   };
 
   const handleDelete = async (id, nomorSurat) => {
-    if(!window.confirm('Yakin ingin menghapus arsip surat ini secara permanen?')) return;
+    if(!window.confirm('Yakin ingin menghapus arsip surat ini? Riwayat data akan disimpan di audit log untuk pemulihan.')) return;
     try {
+      // Ambil data dulu sebelum dihapus agar bisa direstore nantinya
+      const doc = await databases.getDocument(DATABASE_ID, COLLECTION_SURAT_ID, id);
+      
+      // Hapus dokumen
       await databases.deleteDocument(DATABASE_ID, COLLECTION_SURAT_ID, id);
-      await logActivity(user?.name, `Menghapus dokumen surat dengan Nomor: ${nomorSurat || id}`);
+      
+      // Catat dengan payload data yang dihapus
+      await logActivity(user?.name, `Menghapus dokumen surat dengan Nomor: ${nomorSurat || doc.nomorSurat || id}`, doc);
+      
       fetchSurat(page);
     } catch(e) {
       console.error(e);
-      alert('Gagal menghapus surat');
+      alert('Gagal menghapus surat: ' + e.message);
     }
   };
 
@@ -242,8 +249,9 @@ export default function Home() {
             <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
+                  <th style={{ width: '50px', textAlign: 'center' }}>No</th>
                   <th style={{ width: '100px', padding: '1.25rem' }}>
-                    No/Jenis
+                    Jenis
                   </th>
                   <th 
                     onClick={() => toggleSort('noUrut')} 
@@ -264,14 +272,18 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody>
-                {filteredSurat.map((surat) => (
-                  <tr key={surat.$id}>
-                    <td style={{ padding: '1.25rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                        <strong style={{ color: 'var(--text-main)' }}>#{surat.suratId}</strong>
-                        <span className="badge" style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}>{surat.jenisSurat}</span>
-                      </div>
-                    </td>
+                {filteredSurat.map((surat, index) => {
+                  const rowNumber = (page - 1) * ITEMS_PER_PAGE + index + 1;
+                  return (
+                    <tr key={surat.$id}>
+                      <td style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        {rowNumber}
+                      </td>
+                      <td style={{ padding: '1.25rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <span className="badge" style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem' }}>{surat.jenisSurat}</span>
+                        </div>
+                      </td>
                     <td style={{ fontWeight: '600', color: 'var(--primary)', fontSize: '0.9rem' }}>
                       {surat.nomorSurat}
                     </td>
@@ -355,7 +367,8 @@ export default function Home() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
 

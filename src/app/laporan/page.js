@@ -5,7 +5,7 @@ import { Query } from 'appwrite';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const TAHUN_PILIHAN = [
   new Date().getFullYear().toString(),
@@ -140,7 +140,7 @@ export default function LaporanPage() {
       dataLaporan.reduce((acc, curr) => acc + curr.lainnya, 0).toString(),
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 40,
@@ -157,7 +157,7 @@ export default function LaporanPage() {
     });
 
     // Signature Area
-    const finalY = doc.lastAutoTable.finalY || 40;
+    const finalY = doc.lastAutoTable?.finalY || 40;
     doc.text('Hulu Sungai Tengah, ___________', 140, finalY + 20);
     doc.text('Mengetahui,', 140, finalY + 30);
     doc.text('Admin Sistem / Superadmin', 140, finalY + 60);

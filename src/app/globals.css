@@ -202,6 +202,8 @@ label {
 }
 
 input[type="text"],
+input[type="email"],
+input[type="password"],
 input[type="date"],
 input[type="datetime-local"],
 select,
@@ -213,7 +215,7 @@ textarea {
   border: 1px solid var(--border-color);
   color: var(--text-main);
   font-size: 1rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s ease;
   color-scheme: dark;
 }
 
