@@ -14,12 +14,17 @@ export default function AuditLogPage() {
   const [isClearing, setIsClearing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(null); // stores log ID being restored
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [filterType, setFilterType] = useState('all'); // 'all' or 'deletion'
   const ITEMS_PER_PAGE = 20;
 
   const [existingNumbers, setExistingNumbers] = useState([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!authLoading) {
@@ -220,9 +225,9 @@ export default function AuditLogPage() {
     try {
       const d = new Date(isoString);
       return new Intl.DateTimeFormat('id-ID', {
-        day: '2-digit', month: 'long', year: 'numeric',
+        day: '2-digit', month: 'short', year: 'numeric',
         hour: '2-digit', minute: '2-digit'
-      }).format(d);
+      }).format(d).replace(/\./g, '');
     } catch (e) {
       return isoString;
     }
@@ -348,10 +353,12 @@ export default function AuditLogPage() {
                         {payload ? (
                           (() => {
                             let currNum = '';
-                            try {
-                              const jsonStr = typeof window !== 'undefined' ? decodeURIComponent(escape(atob(payload))) : Buffer.from(payload, 'base64').toString('utf8');
-                              currNum = JSON.parse(jsonStr).n;
-                            } catch(e) {}
+                              try {
+                                if (mounted) {
+                                  const jsonStr = typeof window !== 'undefined' ? decodeURIComponent(escape(atob(payload))) : Buffer.from(payload, 'base64').toString('utf8');
+                                  currNum = JSON.parse(jsonStr).n;
+                                }
+                              } catch(e) {}
                             
                             const isAlreadyExists = existingNumbers.includes(currNum);
 

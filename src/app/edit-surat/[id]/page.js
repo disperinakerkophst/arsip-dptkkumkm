@@ -1,40 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { databases, DATABASE_ID, COLLECTION_SURAT_ID } from '@/lib/appwrite';
+import { databases, DATABASE_ID, COLLECTION_SURAT_ID, COLLECTION_JENIS_ID, COLLECTION_KLASIFIKASI_ID } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { logActivity } from '@/lib/audit';
-
-const JENIS_SURAT = [
-  { label: 'Surat Keputusan (SK)', value: 'SK' },
-  { label: 'Surat Tugas (ST)', value: 'ST' },
-  { label: 'Surat Undangan (UND)', value: 'UND' },
-  { label: 'Surat Edaran (SE)', value: 'SE' },
-  { label: 'Surat Keterangan (KET)', value: 'KET' },
-  { label: 'Nota Dinas (ND)', value: 'ND' },
-  { label: 'Surat Perjanjian/Kontrak (SPK)', value: 'SPK' },
-  { label: 'Surat Permohonan (PMH)', value: 'PMH' },
-  { label: 'Surat Pengantar (PNT)', value: 'PNT' },
-  { label: 'Rekomendasi (REK)', value: 'REK' },
-  { label: 'Berita Acara (BA)', value: 'BA' },
-  { label: 'Nota Kesepahaman (MOU)', value: 'MOU' },
-  { label: 'Pengumuman (PENG)', value: 'PENG' },
-  { label: 'Surat Balasan (BLS)', value: 'BLS' },
-  { label: 'Surat Biasa (B)', value: 'B' },
-];
-
-const KLASIFIKASI_SURAT = [
-  { label: 'Perindustrian (530)', value: '530' },
-  { label: 'Tenaga Kerja (560)', value: '560' },
-  { label: 'Koperasi dan UMKM (518)', value: '518' },
-  { label: 'Kepegawaian (800)', value: '800' },
-  { label: 'Perjalanan Dinas (090)', value: '090' },
-  { label: 'Undangan (005)', value: '005' },
-  { label: 'Keuangan (900)', value: '900' },
-  { label: 'Perencanaan (050)', value: '050' },
-  { label: 'Organisasi (060)', value: '060' },
-];
 
 const PEMBUAT_SURAT = [
   { label: 'Sekretariat (SKE)', value: 'SKE' },
@@ -45,17 +15,42 @@ const PEMBUAT_SURAT = [
 ];
 
 export default function EditSurat() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, role, bidang: userBidang, loading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
   const id = params?.id;
+
+  const [jenisOptions, setJenisOptions] = useState([]);
+  const [klasifikasiOptions, setKlasifikasiOptions] = useState([]);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const [resJenis, resKlas] = await Promise.all([
+          databases.listDocuments(DATABASE_ID, COLLECTION_JENIS_ID, [Query.limit(100)]),
+          databases.listDocuments(DATABASE_ID, COLLECTION_KLASIFIKASI_ID, [Query.limit(100)])
+        ]);
+        
+        if (resJenis.documents.length > 0) {
+          setJenisOptions(resJenis.documents.map(d => ({ label: `${d.label} (${d.code})`, value: d.code })));
+        }
+        if (resKlas.documents.length > 0) {
+          setKlasifikasiOptions(resKlas.documents.map(d => ({ label: `${d.label} (${d.code})`, value: d.code })));
+        }
+      } catch (err) {
+        console.log("Using default configuration");
+      }
+    };
+    fetchConfig();
+  }, []);
 
   const [formData, setFormData] = useState({
     jenisSurat: 'SK',
     tanggalSurat: '',
     tujuanSurat: '',
     perihal: '',
-    pembuatSurat: 'SKE',
+    pembuatSurat: '',
+    kodeBidang: 'SKE',
     klasifikasiSurat: '530',
     noUrut: '',
   });
@@ -81,12 +76,25 @@ export default function EditSurat() {
     const fetchSuratData = async () => {
       try {
         const surat = await databases.getDocument(DATABASE_ID, COLLECTION_SURAT_ID, id);
+        
+        // Proteksi Role Pembuat Surat: Hanya boleh edit punya sendiri
+        if (role === 'pembuat_surat' && surat.pembuatSurat !== user.name) {
+          alert('Anda tidak memiliki izin untuk mengedit arsip milik orang lain.');
+          router.push('/');
+          return;
+        }
+
+        // Ekstrak kode bidang dari nomor surat jika ada (contoh: 530/001/SK/SKE/...)
+        const parts = surat.nomorSurat ? surat.nomorSurat.split('/') : [];
+        const extractedBidang = parts.length >= 4 ? parts[3] : (surat.pembuatSurat.length <= 5 ? surat.pembuatSurat : 'SKE');
+
         setFormData({
           jenisSurat: surat.jenisSurat || 'SK',
           tanggalSurat: surat.tanggalSurat ? surat.tanggalSurat.split('T')[0] : '',
           tujuanSurat: surat.tujuanSurat || '',
           perihal: surat.perihal || '',
-          pembuatSurat: surat.pembuatSurat || 'SKE',
+          pembuatSurat: surat.pembuatSurat || '', // Berisi Nama
+          kodeBidang: extractedBidang, // Berisi Kode (SKE, dll)
           klasifikasiSurat: surat.klasifikasiSurat || '530',
           noUrut: surat.noUrut || '',
         });
@@ -154,7 +162,7 @@ export default function EditSurat() {
 
   const inputYear = formData.tanggalSurat ? new Date(formData.tanggalSurat).getFullYear().toString() : '....';
   const displayNoUrut = formData.noUrut || '...';
-  const fullNomorSurat = `${formData.klasifikasiSurat}/${displayNoUrut}/${formData.jenisSurat}/${formData.pembuatSurat}/DPTKKUMKM/${inputYear}`;
+  const fullNomorSurat = `${formData.klasifikasiSurat}/${displayNoUrut}/${formData.jenisSurat}/${formData.kodeBidang}/DPTKKUMKM/${inputYear}`;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -308,22 +316,38 @@ export default function EditSurat() {
             <div className="form-group">
               <label>Jenis Surat</label>
               <select name="jenisSurat" value={formData.jenisSurat} onChange={handleChange}>
-                {JENIS_SURAT.map(j => <option key={j.value} value={j.value}>{j.label}</option>)}
+                {jenisOptions.map(j => <option key={j.value} value={j.value}>{j.label}</option>)}
               </select>
             </div>
             <div className="form-group">
               <label>Klasifikasi Surat</label>
               <select name="klasifikasiSurat" value={formData.klasifikasiSurat} onChange={handleChange}>
-                {KLASIFIKASI_SURAT.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
+                {klasifikasiOptions.map(k => <option key={k.value} value={k.value}>{k.label}</option>)}
               </select>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             <div className="form-group">
-              <label>Pembuat Surat</label>
-              <select name="pembuatSurat" value={formData.pembuatSurat} onChange={handleChange}>
-                {PEMBUAT_SURAT.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+              <label>Identitas Pemilik Nomor</label>
+              <input 
+                type="text" 
+                name="pembuatSurat" 
+                value={formData.pembuatSurat} 
+                disabled
+                style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed', color: 'var(--primary)', fontWeight: 'bold' }}
+              />
+              <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Identitas ini digunakan untuk sistem notifikasi booking.</small>
+            </div>
+
+            <div className="form-group">
+              <label>Kode Bidang (Muncul di Nomor Surat)</label>
+              <select name="kodeBidang" value={formData.kodeBidang} onChange={handleChange}>
+                <option value="SKE">Sekretariat (SKE)</option>
+                <option value="KEU">Keuangan (KEU)</option>
+                <option value="IND">Perindustrian (IND)</option>
+                <option value="NAKER">Tenaga Kerja (NAKER)</option>
+                <option value="KUMKM">Koperasi & UMKM (KUMKM)</option>
               </select>
             </div>
 

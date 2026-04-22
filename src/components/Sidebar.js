@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -6,6 +7,25 @@ import { useAuth } from '@/context/AuthContext';
 export default function Sidebar() {
   const pathname = usePathname();
   const { user, role, logout } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  const [highlightLogin, setHighlightLogin] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null); // 'surat', 'sistem'
+
+  useEffect(() => {
+    setMounted(true);
+    
+    const handleHighlight = () => {
+      setHighlightLogin(true);
+      setTimeout(() => {
+        const loginBtn = document.querySelector('.login-highlight-anim');
+        if (loginBtn) loginBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
+      setTimeout(() => setHighlightLogin(false), 3000);
+    };
+    
+    window.addEventListener('highlightLogin', handleHighlight);
+    return () => window.removeEventListener('highlightLogin', handleHighlight);
+  }, []);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -15,138 +35,143 @@ export default function Sidebar() {
     return 'Selamat Malam';
   };
 
+  const handleScrollToTop = (e) => {
+    if (pathname === '/') {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleScrollToTable = (e) => {
+    if (pathname === '/') {
+      e.preventDefault();
+      const element = document.getElementById('tabel-riwayat');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  };
+
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <a href="/" className="sidebar-brand-link" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-          <div className="sidebar-brand">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginBottom: '0.25rem' }}>
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M8 11h8" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
-              <path d="M8 15h5" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
-              <path d="M10 7h4" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
-            </svg>
-            <div className="sidebar-title">Arsip Dinas</div>
+    <header className="top-navbar">
+      <Link href="/" style={{ textDecoration: 'none' }} onClick={handleScrollToTop}>
+        <div className="navbar-brand">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: '2px' }}>
+            <rect x="3" y="15" width="18" height="6" rx="2" stroke="var(--primary)" strokeWidth="2" strokeLinejoin="round"/>
+            <path d="M5 15V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v10" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M9 7h6" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
+            <path d="M9 11h6" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
+            <circle cx="12" cy="18" r="1.5" fill="var(--primary)"/>
+          </svg>
+          <div className="navbar-brand-text">
+            <span className="navbar-title"><b>Arsip Dinas</b> </span>
           </div>
-        </a>
-        <div className="sidebar-subtitle">
-          <span className="subtitle-l1">Dinas Perindustrian, Tenaga Kerja, Koperasi & UMKM</span>
-          <span className="subtitle-l2"></span>
-          <span className="subtitle-l3">Kabupaten Hulu Sungai Tengah</span>
         </div>
-      </div>
+      </Link>
 
-      {user && (
-        <div style={{ padding: '0.75rem 1rem', background: 'rgba(255,193,7,0.1)', borderRadius: '10px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,193,7,0.2)' }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffc107" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{getGreeting()},</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#ffc107', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
-              Admin {user.name || 'Utama'}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <nav className="nav-links" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Link 
-          href="/" 
-          className="nav-link" 
-          style={pathname === '/' || pathname.startsWith('/edit-surat') ? { color: 'var(--primary)', backgroundColor: 'rgba(168, 199, 250, 0.08)' } : {}}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.75rem' }}>
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-          </svg>
-          Riwayat Surat Keluar
+      <nav className="nav-links">
+        {/* 1. Beranda */}
+        <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`} onClick={handleScrollToTop}>
+          Beranda
         </Link>
-        
-        {user && (
-          <>
-            <Link 
-              href="/surat-baru" 
-              className="nav-link"
-              style={pathname === '/surat-baru' ? { color: 'var(--primary)', backgroundColor: 'rgba(168, 199, 250, 0.08)' } : {}}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.75rem' }}>
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              Surat Baru
-            </Link>
 
-            <Link 
-              href="/laporan" 
-              className="nav-link"
-              style={pathname === '/laporan' ? { color: 'var(--primary)', backgroundColor: 'rgba(168, 199, 250, 0.08)' } : {}}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.75rem' }}>
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-              </svg>
-              Rekap Laporan
-            </Link>
-
-            {role === 'superadmin' && (
-              <div style={{ marginTop: 'auto', marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '0.5rem', paddingLeft: '1rem' }}>Menu Superadmin</div>
-                <Link 
-                  href="/audit-log" 
-                  className="nav-link"
-                  style={pathname === '/audit-log' ? { color: 'var(--primary)', backgroundColor: 'rgba(168, 199, 250, 0.08)' } : {}}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.75rem' }}>
-                    <path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                  </svg>
-                  Audit Log System
-                </Link>
-
-                <Link 
-                  href="/pengguna" 
-                  className="nav-link"
-                  style={pathname === '/pengguna' ? { color: 'var(--primary)', backgroundColor: 'rgba(168, 199, 250, 0.08)' } : {}}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.75rem' }}>
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                  </svg>
-                  Kelola Admin
-                </Link>
-              </div>
+        {/* 2. Manajemen Surat */}
+        <div 
+          className="nav-item-container"
+          onMouseEnter={() => setOpenDropdown('surat')}
+          onMouseLeave={() => setOpenDropdown(null)}
+          onClick={() => { if(window.innerWidth <= 768) setOpenDropdown(openDropdown === 'surat' ? null : 'surat'); }}
+        >
+          <div className={`nav-link ${(pathname === '/surat-baru' || pathname === '/template-surat' || pathname.includes('#tabel-riwayat')) ? 'active' : ''}`}>
+            Manajemen Surat
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '2px', opacity: 0.5, transform: openDropdown === 'surat' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </div>
+          <div className={`nav-dropdown ${openDropdown === 'surat' ? 'show' : ''}`}>
+            {user && (
+              <Link href="/surat-baru" className={`dropdown-link ${pathname === '/surat-baru' ? 'active' : ''}`} onClick={() => setOpenDropdown(null)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Buat Surat Baru
+              </Link>
             )}
-            
-            <button 
-              onClick={logout} 
-              className="nav-link" 
-              style={{ background: 'transparent', border: 'none', cursor: 'pointer', outline: 'none', color: '#ff4444', textAlign: 'left', marginTop: role === 'superadmin' ? '0' : 'auto' }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.75rem' }}>
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                <polyline points="16 17 21 12 16 7"></polyline>
-                <line x1="21" y1="12" x2="9" y2="12"></line>
-              </svg>
-              Keluar Sistem
-            </button>
-          </>
+            <Link href="/#tabel-riwayat" className="dropdown-link" onClick={(e) => { setOpenDropdown(null); handleScrollToTable(e); }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              Riwayat Surat Keluar
+            </Link>
+            <Link href="/template-surat" className={`dropdown-link ${pathname === '/template-surat' ? 'active' : ''}`} onClick={() => setOpenDropdown(null)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><rect x="2" y="7" width="20" height="13" rx="2" ry="2"/><rect x="5" y="11" width="14" height="2"/></svg>
+              Template Surat
+            </Link>
+          </div>
+        </div>
+
+        {/* 3. Laporan */}
+        {user && role !== 'pembuat_surat' && (
+          <Link href="/laporan" className={`nav-link ${pathname === '/laporan' ? 'active' : ''}`}>
+            Laporan
+          </Link>
         )}
 
-        {!user && (
-          <Link href="/login" className="nav-link" style={{ marginTop: 'auto', border: '1px dashed rgba(255,255,255,0.1)', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '0.5rem' }}>
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            Login Admin
+        {/* 4. Pengaturan Sistem */}
+        {user && role === 'superadmin' && (
+          <div 
+            className="nav-item-container"
+            onMouseEnter={() => setOpenDropdown('sistem')}
+            onMouseLeave={() => setOpenDropdown(null)}
+            onClick={() => { if(window.innerWidth <= 768) setOpenDropdown(openDropdown === 'sistem' ? null : 'sistem'); }}
+          >
+            <div className={`nav-link ${(pathname === '/pengguna' || pathname === '/pengaturan' || pathname === '/audit-log') ? 'active' : ''}`}>
+              Pengaturan Sistem
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '2px', opacity: 0.5, transform: openDropdown === 'sistem' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </div>
+            <div className={`nav-dropdown ${openDropdown === 'sistem' ? 'show' : ''}`}>
+              <Link href="/pengguna" className={`dropdown-link ${pathname === '/pengguna' ? 'active' : ''}`} onClick={() => setOpenDropdown(null)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Data Admin
+              </Link>
+              <Link href="/pengaturan" className={`dropdown-link ${pathname === '/pengaturan' ? 'active' : ''}`} onClick={() => setOpenDropdown(null)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                Klasifikasi & Jenis Surat
+              </Link>
+              <Link href="/audit-log" className={`dropdown-link ${pathname === '/audit-log' ? 'active' : ''}`} onClick={() => setOpenDropdown(null)}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Audit Log
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {user ? (
+          <div className="nav-user">
+             <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#e0e0e0', whiteSpace: 'nowrap' }}>
+               Halo, {user.name || 'Admin'}
+             </span>
+             <button onClick={logout} title="Keluar" style={{ padding: '0 0 0 0.6rem', color: '#bdbdbd', border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', outline: 'none', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+             </button>
+          </div>
+        ) : (
+          <Link href="/login" 
+            className={`nav-link ${highlightLogin ? 'login-highlight-anim' : ''}`} 
+            style={{ 
+              border: '1px solid rgba(168, 199, 250, 0.2)', 
+              padding: '0.4rem 1.25rem',
+              borderRadius: '999px',
+              color: 'var(--primary)',
+              fontWeight: '800',
+              textShadow: '0 0 10px rgba(168, 199, 250, 0.4)',
+              background: 'rgba(168, 199, 250, 0.05)'
+            }}
+          >
+            Login
           </Link>
         )}
       </nav>
-
-      <div className="sidebar-footer">
-        @2026-04 V.1.0 - Dibuat Oleh JF Pranata Komputer / Diberdayakan Oleh DPTKKUMKM HST
-      </div>
-    </aside>
+    </header>
   );
 }

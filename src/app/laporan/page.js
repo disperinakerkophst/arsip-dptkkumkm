@@ -7,11 +7,8 @@ import { useRouter } from 'next/navigation';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const TAHUN_PILIHAN = [
-  new Date().getFullYear().toString(),
-  (new Date().getFullYear() - 1).toString(),
-  (new Date().getFullYear() - 2).toString()
-];
+// Tahun pilihan akan diisi saat mount
+const TAHUN_AWAL = [(new Date().getFullYear()).toString()];
 
 const BULAN = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -22,16 +19,32 @@ export default function LaporanPage() {
   const { user, role, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  const [tahun, setTahun] = useState(TAHUN_PILIHAN[0]);
+  const [tahunPilihan, setTahunPilihan] = useState([]);
+  const [tahun, setTahun] = useState('');
+  
+  useEffect(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [
+      currentYear.toString(),
+      (currentYear - 1).toString(),
+      (currentYear - 2).toString()
+    ];
+    setTahunPilihan(years);
+    setTahun(years[0]);
+  }, []);
   const [dataLaporan, setDataLaporan] = useState([]);
   const [totalSurat, setTotalSurat] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (!authLoading) {
+      if (!user) {
+        router.push('/login');
+      } else if (role === 'pembuat_surat') {
+        router.push('/');
+      }
     }
-  }, [user, authLoading, router]);
+  }, [user, role, authLoading, router]);
 
   useEffect(() => {
     if (user) {
@@ -40,10 +53,12 @@ export default function LaporanPage() {
   }, [tahun, user]);
 
   const fetchLaporanData = async () => {
+    if (!tahun || isNaN(parseInt(tahun))) return;
     setLoading(true);
     try {
-      const startDate = `${tahun}-01-01T00:00:00.000Z`;
-      const endDate = `${tahun}-12-31T23:59:59.999Z`;
+      const yearStr = tahun.toString();
+      const startDate = `${yearStr}-01-01T00:00:00.000Z`;
+      const endDate = `${yearStr}-12-31T23:59:59.999Z`;
 
       let allDocuments = [];
       let offset = 0;
@@ -186,7 +201,7 @@ export default function LaporanPage() {
             onChange={(e) => setTahun(e.target.value)}
             style={{ padding: '0.5rem 1rem', borderRadius: '4px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
           >
-            {TAHUN_PILIHAN.map(t => <option key={t} value={t}>{t}</option>)}
+            {tahunPilihan.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
 
           {role === 'superadmin' ? (

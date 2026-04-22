@@ -8,6 +8,7 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null); // 'admin' or 'superadmin'
+  const [bidang, setBidang] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,9 +29,27 @@ export const AuthProvider = ({ children }) => {
             [Query.equal('userId', accountData.$id)]
             );
             if (roleData.documents.length > 0) {
-            setRole(roleData.documents[0].role);
+              const userData = roleData.documents[0];
+              const fullRole = userData.role || 'admin';
+
+              // Update state user dengan nama dari database (agar jika diedit admin langsung berubah)
+              setUser(prev => ({
+                ...prev,
+                name: userData.nama || prev.name
+              }));
+              
+              // Cek jika ada bidang di dalam kurung, misal: pembuat_surat[SKE]
+              if (fullRole.includes('[') && fullRole.includes(']')) {
+                const parts = fullRole.split('[');
+                setRole(parts[0]);
+                setBidang(parts[1].replace(']', ''));
+              } else {
+                setRole(fullRole);
+                setBidang('SKE'); // Default
+              }
             } else {
-            setRole('publik'); // fallback
+              setRole('publik');
+              setBidang('SKE');
             }
         } catch (e) {
             console.error("Gagal mengambil role dari Users. Pastikan ID Collection benar.", e);
@@ -62,7 +81,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, role, bidang, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

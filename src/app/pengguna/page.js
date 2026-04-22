@@ -22,7 +22,8 @@ export default function PenggunaPage() {
     username: '',
     email: '',
     password: '',
-    role: 'admin'
+    role: 'admin',
+    bidang: 'SKE'
   });
 
   useEffect(() => {
@@ -69,20 +70,20 @@ export default function PenggunaPage() {
 
     try {
       if (editingId) {
-        // Edit Mode
+        // Edit Mode - Simpan bidang di dalam string role: role[BIDANG]
         await databases.updateDocument(
           DATABASE_ID,
           COLLECTION_USERS_ID,
           editingId,
           {
             nama: formData.username,
-            role: formData.role
+            role: `${formData.role}[${formData.bidang}]`
           }
         );
-        await logActivity(user?.name, `Mengubah data pengguna: ${formData.username} menjadi role ${formData.role}`);
+        await logActivity(user?.name, `Mengubah data pengguna: ${formData.username} menjadi role ${formData.role} (${formData.bidang})`);
         setSuccessMsg(`Berhasil memperbarui data Admin: ${formData.username}`);
         setEditingId(null);
-        setFormData({ username: '', email: '', password: '', role: 'admin' });
+        setFormData({ username: '', email: '', password: '', role: 'admin', bidang: 'SKE' });
         fetchUsers();
       } else {
         // Create Mode
@@ -100,13 +101,13 @@ export default function PenggunaPage() {
           {
             userId: newAccount.$id,
             nama: formData.username,
-            role: formData.role
+            role: `${formData.role}[${formData.bidang}]`
           }
         );
-        await logActivity(user?.name, `Menambahkan pengguna baru: ${formData.username} dengan role ${formData.role}`);
+        await logActivity(user?.name, `Menambahkan pengguna baru: ${formData.username} dengan role ${formData.role} (${formData.bidang})`);
 
         setSuccessMsg(`Berhasil mendaftarkan Admin: ${formData.username}`);
-        setFormData({ username: '', email: '', password: '', role: 'admin' });
+        setFormData({ username: '', email: '', password: '', role: 'admin', bidang: 'SKE' });
         fetchUsers();
       }
     } catch (err) {
@@ -118,12 +119,22 @@ export default function PenggunaPage() {
   };
 
   const handleEdit = (u) => {
+    let baseRole = u.role || 'admin';
+    let userBidang = 'SKE';
+
+    if (baseRole.includes('[') && baseRole.includes(']')) {
+      const parts = baseRole.split('[');
+      baseRole = parts[0];
+      userBidang = parts[1].replace(']', '');
+    }
+
     setEditingId(u.$id);
     setFormData({
       username: u.nama,
-      email: '', // Not editable via this simple client side UI
+      email: '', 
       password: '',
-      role: u.role
+      role: baseRole,
+      bidang: userBidang
     });
     setSuccessMsg('');
     setError('');
@@ -131,7 +142,7 @@ export default function PenggunaPage() {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setFormData({ username: '', email: '', password: '', role: 'admin' });
+    setFormData({ username: '', email: '', password: '', role: 'admin', bidang: 'SKE' });
     setSuccessMsg('');
     setError('');
   };
@@ -178,7 +189,7 @@ export default function PenggunaPage() {
           {error && <div className="alert alert-error" style={{ fontSize: '0.85rem' }}>{error}</div>}
           {successMsg && <div className="alert alert-success" style={{ fontSize: '0.85rem' }}>{successMsg}</div>}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="form-group">
               <label>Panggilan Username</label>
               <input 
@@ -221,8 +232,23 @@ export default function PenggunaPage() {
                 value={formData.role} 
                 onChange={e => setFormData({...formData, role: e.target.value})}
               >
+                <option value="pembuat_surat">Pembuat Surat (Hanya Input & Booking)</option>
                 <option value="admin">Administrator Biasa (Surat & Rekap)</option>
                 <option value="superadmin">Superadmin (+Audit & Tambah User)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Penempatan Bidang</label>
+              <select 
+                value={formData.bidang} 
+                onChange={e => setFormData({...formData, bidang: e.target.value})}
+              >
+                <option value="SKE">Sekretariat (SKE)</option>
+                <option value="KEU">Keuangan (KEU)</option>
+                <option value="IND">Perindustrian (IND)</option>
+                <option value="NAKER">Tenaga Kerja (NAKER)</option>
+                <option value="KUMKM">Koperasi & UMKM (KUMKM)</option>
               </select>
             </div>
 
@@ -230,9 +256,17 @@ export default function PenggunaPage() {
               <button type="submit" className="btn-primary" disabled={isSubmitting} style={{ flex: 1 }}>
                 {isSubmitting ? 'Memproses...' : (editingId ? 'Simpan Perubahan' : 'Daftarkan Sistem')}
               </button>
-              {editingId && (
+              {editingId ? (
                 <button type="button" onClick={handleCancelEdit} style={{ flex: 1, padding: '0.75rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
                   Batal
+                </button>
+              ) : (
+                <button 
+                  type="button" 
+                  onClick={() => setFormData({ username: '', email: '', password: '', role: 'admin', bidang: 'SKE' })} 
+                  style={{ flex: '0 0 auto', padding: '0.75rem 1rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-muted)', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
+                >
+                  Bersihkan
                 </button>
               )}
             </div>
@@ -258,18 +292,32 @@ export default function PenggunaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u, idx) => (
-                    <tr key={u.$id} style={{ borderBottom: idx < users.length - 1 ? '1px dashed rgba(255,255,255,0.05)' : 'none' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{u.nama}</td>
-                      <td style={{ padding: '0.75rem 1rem' }}>
-                        <span className="badge" style={
-                          u.role === 'superadmin' 
-                            ? { backgroundColor: 'rgba(255,193,7,0.1)', color: '#ffc107', border: '1px solid #ffc107' }
-                            : { backgroundColor: 'rgba(168,199,250,0.1)', color: 'var(--primary)', border: '1px solid var(--primary)' }
-                        }>
-                          {u.role.toUpperCase()}
-                        </span>
-                      </td>
+                    {users.map((u, idx) => {
+                      let displayRole = u.role || 'admin';
+                      let displayBidang = 'SKE';
+                      if (displayRole.includes('[')) {
+                        const parts = displayRole.split('[');
+                        displayRole = parts[0];
+                        displayBidang = parts[1].replace(']', '');
+                      }
+                      
+                      return (
+                        <tr key={u.$id} style={{ borderBottom: idx < users.length - 1 ? '1px dashed rgba(255,255,255,0.05)' : 'none' }}>
+                          <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{u.nama}</td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <span className="badge" style={
+                              displayRole === 'superadmin' 
+                                ? { backgroundColor: 'rgba(255,193,7,0.1)', color: '#ffc107', border: '1px solid #ffc107' }
+                                : displayRole === 'pembuat_surat'
+                                ? { backgroundColor: 'rgba(0,191,165,0.1)', color: '#00bfa5', border: '1px solid #00bfa5' }
+                                : { backgroundColor: 'rgba(168,199,250,0.1)', color: 'var(--primary)', border: '1px solid var(--primary)' }
+                            }>
+                              {displayRole.replace('_', ' ').toUpperCase()}
+                            </span>
+                            <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              ({displayBidang})
+                            </span>
+                          </td>
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
                         <button 
                           onClick={() => handleEdit(u)} 
@@ -285,7 +333,8 @@ export default function PenggunaPage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  );
+                })}
                 </tbody>
               </table>
             </div>

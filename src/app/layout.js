@@ -14,9 +14,14 @@ export default function RootLayout({ children }) {
         <AuthProvider>
           <div className="app-container">
             <Sidebar />
-            <main className="main-content">
-              {children}
-            </main>
+            <div className="content-wrapper">
+              <main className="main-content">
+                {children}
+              </main>
+              <footer className="main-footer">
+                @2026-04 V.1.0 - Dibuat Oleh JF Pranata Komputer / Diberdayakan Oleh DPTKKUMKM HST
+              </footer>
+            </div>
           </div>
         </AuthProvider>
       </body>

@@ -8,10 +8,15 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
   
   const { user, login } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -96,7 +101,7 @@ export default function Login() {
                 </svg>
                 Memproses...
               </span>
-            ) : 'Masuk ke Sistem'}
+            ) : 'Masuk'}
           </button>
         </form>
 
@@ -108,7 +113,7 @@ export default function Login() {
             </svg>
             <span style={{ fontSize: '0.75rem', letterSpacing: '0.5px', textTransform: 'uppercase' }}>Sambungan Terenkripsi</span>
           </div>
-          &copy; {new Date().getFullYear()} DPTKKUMKM
+          &copy; {mounted ? new Date().getFullYear() : '2026'} DPTKKUMKM
         </div>
       </div>
 
