@@ -234,7 +234,7 @@ export default function AuditLogPage() {
   };
 
   return (
-    <div className="main-container" style={{ maxWidth: '1000px', margin: '0 auto', padding: '1rem' }}>
+    <div className="main-content-inner" style={{ maxWidth: '1000px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: '800', marginBottom: '0.25rem', background: 'var(--gradient-accent)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -318,7 +318,7 @@ export default function AuditLogPage() {
           </div>
         ) : (
           <div className="table-container">
-            <table>
+            <table className="table-compact table-responsive-stack">
               <thead>
                 <tr>
                   <th style={{ width: '50px', textAlign: 'center' }}>No</th>
@@ -336,20 +336,20 @@ export default function AuditLogPage() {
                   
                   return (
                     <tr key={log.$id} style={{ borderLeft: isDel ? '4px solid var(--error)' : 'none' }}>
-                      <td style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)', opacity: 0.7 }}>
+                      <td data-label="No" style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)', opacity: 0.7 }}>
                         {rowNumber}
                       </td>
-                      <td style={{ fontSize: '0.85rem' }}>{formatDate(log.tanggal)}</td>
-                      <td>
+                      <td data-label="Waktu" style={{ fontSize: '0.85rem' }}>{formatDate(log.tanggal)}</td>
+                      <td data-label="Pelaksana">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: isDel ? 'var(--error)' : 'var(--success)' }}></span>
                           <span style={{ fontWeight: '500' }}>{log.username}</span>
                         </div>
                       </td>
-                      <td style={{ fontSize: '0.9rem', color: isDel ? '#ffb4ab' : 'var(--text-main)' }}>
+                      <td data-label="Aktivitas" style={{ fontSize: '0.9rem', color: isDel ? '#ffb4ab' : 'var(--text-main)' }}>
                         {display}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label="Pemulihan" style={{ textAlign: 'center' }}>
                         {payload ? (
                           (() => {
                             let currNum = '';

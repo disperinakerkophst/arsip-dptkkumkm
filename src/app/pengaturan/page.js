@@ -94,28 +94,37 @@ export default function Pengaturan() {
       setError("Gagal menghapus: " + err.message);
     }
   };
+  
+  const IconTrash = () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"></polyline>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+    </svg>
+  );
 
   if (authLoading || !user || role !== 'superadmin') {
     return <div style={{ padding: '3rem', textAlign: 'center' }}>Memverifikasi otorisasi...</div>;
   }
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+    <div className="main-content-inner">
       <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '2rem', margin: 0 }}>Pengaturan Koleksi</h2>
+        <h2 style={{ fontSize: '1.8rem', fontWeight: '800', marginBottom: '0.5rem', background: 'var(--gradient-accent)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          Pengaturan Koleksi
+        </h2>
         <p style={{ color: 'var(--text-muted)' }}>Kelola data master Jenis Surat dan Klasifikasi yang digunakan dalam penomoran.</p>
       </div>
 
       {error && <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>{error}</div>}
       {success && <div className="alert alert-success" style={{ marginBottom: '1.5rem' }}>{success}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
+      <div className="stack-on-mobile" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
         
         {/* JENIS SURAT */}
         <div className="card" style={{ padding: '2rem' }}>
           <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>Daftar Jenis Surat</h3>
           
-          <form onSubmit={handleAddJenis} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          <form onSubmit={handleAddJenis} className="stack-on-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: '0.5rem', marginBottom: '1.5rem' }}>
             <input 
               type="text" 
               placeholder="Label (e.g. Surat Keputusan)" 
@@ -147,8 +156,12 @@ export default function Pengaturan() {
                   <td>{j.label}</td>
                   <td><span className="badge">{j.code}</span></td>
                   <td>
-                    <button onClick={() => handleDelete(COLLECTION_JENIS_ID, j.$id, j.label)} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer' }}>
-                      Hapus
+                    <button 
+                      onClick={() => handleDelete(COLLECTION_JENIS_ID, j.$id, j.label)} 
+                      title="Hapus"
+                      style={{ background: 'rgba(242, 184, 181, 0.1)', border: '1px solid rgba(242, 184, 181, 0.2)', color: 'var(--error)', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
+                    >
+                      <IconTrash />
                     </button>
                   </td>
                 </tr>
@@ -163,7 +176,7 @@ export default function Pengaturan() {
         <div className="card" style={{ padding: '2rem' }}>
           <h3 style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>Daftar Klasifikasi Surat</h3>
           
-          <form onSubmit={handleAddKlasifikasi} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          <form onSubmit={handleAddKlasifikasi} className="stack-on-mobile" style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: '0.5rem', marginBottom: '1.5rem' }}>
             <input 
               type="text" 
               placeholder="Label (e.g. Kepegawaian)" 
@@ -195,8 +208,12 @@ export default function Pengaturan() {
                   <td>{k.label}</td>
                   <td><span className="badge" style={{ background: 'rgba(255, 193, 7, 0.1)', color: '#ffc107' }}>{k.code}</span></td>
                   <td>
-                    <button onClick={() => handleDelete(COLLECTION_KLASIFIKASI_ID, k.$id, k.label)} style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer' }}>
-                      Hapus
+                    <button 
+                      onClick={() => handleDelete(COLLECTION_KLASIFIKASI_ID, k.$id, k.label)} 
+                      title="Hapus"
+                      style={{ background: 'rgba(242, 184, 181, 0.1)', border: '1px solid rgba(242, 184, 181, 0.2)', color: 'var(--error)', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s' }}
+                    >
+                      <IconTrash />
                     </button>
                   </td>
                 </tr>

@@ -77,6 +77,7 @@ export default function Login() {
               placeholder="admin@dinas.go.id"
               required
               autoComplete="email"
+              suppressHydrationWarning
             />
           </div>
           
@@ -89,6 +90,7 @@ export default function Login() {
               placeholder="••••••••"
               required
               autoComplete="current-password"
+              suppressHydrationWarning
             />
           </div>
 

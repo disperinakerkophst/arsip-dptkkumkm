@@ -325,7 +325,7 @@ export default function Home() {
     <div>
       {/* HERO SECTION */}
       <section className="hero-section">
-        <div className="hero-badge">🚀 Introducing Sistem Berbasis Digital</div>
+        <div className="hero-badge">🚀 Introducing Sistem Arsip Berbasis Digital</div>
         <h1 className="hero-title">Kelola Surat Lebih Cepat,<br/>Simpan Lebih Aman</h1>
         <p className="hero-description">
           Selamat datang di Sistem Arsip Terintegrasi Dinas Perindustrian, Tenaga Kerja, Koperasi dan Usaha Mikro Kecil Menengah Kabupaten Hulu Sungai Tengah. Platform ini dirancang untuk mengoptimalkan manajemen korespondensi organisasi melalui standardisasi Penomoran Surat Keluar secara otomatis dan penyimpanan dokumen berbasis digital.
@@ -364,11 +364,46 @@ export default function Home() {
             Unduh Template Surat
           </Link>
         </div>
+
+        {/* Minimalist Scroll Hint */}
+        <div 
+          onClick={() => {
+            if (tableRef.current) {
+              window.scrollTo({ top: tableRef.current.offsetTop - 100, behavior: 'smooth' });
+            }
+          }}
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            marginTop: '2rem', 
+            paddingBottom: '0.5rem',
+            cursor: 'pointer',
+            opacity: 0.35,
+            transition: 'opacity 0.3s ease'
+          }}
+          className="scroll-hint-container"
+        >
+          <span style={{ 
+            fontSize: '0.62rem', 
+            fontWeight: '600', 
+            letterSpacing: '1.2px', 
+            textTransform: 'uppercase',
+            fontFamily: "'Inter', sans-serif",
+            marginBottom: '0.5rem', 
+            color: 'var(--text-muted)'
+          }}>
+            Menuju Riwayat Surat
+          </span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="bounce-anim">
+            <path d="M7 13l5 5 5-5M7 6l5 5 5-5" />
+          </svg>
+        </div>
       </section>
 
       {/* DASHBOARD SUMMARY SECTION */}
       {user && (
-        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem', background: 'linear-gradient(45deg, rgba(30,31,32,1) 0%, rgba(42,48,60,1) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', flexWrap: 'wrap' }}>
+        <div className="welcome-card card">
           <div style={{ flex: 1, minWidth: '300px' }}>
             <h3 style={{ margin: 0, fontSize: '1.5rem' }}>Selamat Datang Kembali, <span className="username-reveal" style={{ color: 'var(--primary)' }}>{user.name}!</span></h3>
             <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
@@ -536,15 +571,15 @@ export default function Home() {
 
           <div className="card" style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
             <h4>Aktivitas Terakhir</h4>
-            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto' }}>
+            <div className="activity-feed">
               {activities.length > 0 ? activities.map(act => (
-                <div key={act.$id} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
-                  <div style={{ background: 'rgba(168, 199, 250, 0.1)', padding: '0.5rem', borderRadius: '50%', flexShrink: 0 }}>
+                <div key={act.$id} className="activity-item">
+                  <div className="activity-icon">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                   </div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: '0.85rem' }} dangerouslySetInnerHTML={{ __html: `<strong>${act.username || 'Admin'}</strong> ${(act.aktivitas || '').split(' [R:')[0]}` }} />
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{getTimeAgo(act.$createdAt)}</div>
+                  <div className="activity-content">
+                    <div className="activity-text" dangerouslySetInnerHTML={{ __html: `<strong>${act.username || 'Admin'}</strong> ${(act.aktivitas || '').split(' [R:')[0]}` }} />
+                    <div className="activity-time">{getTimeAgo(act.$createdAt)}</div>
                   </div>
                 </div>
               )) : (
@@ -586,6 +621,7 @@ export default function Home() {
                 placeholder="Cari perihal, nomor, atau tujuan..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                suppressHydrationWarning
               />
             </div>
 
@@ -607,12 +643,12 @@ export default function Home() {
 
             <div className="filter-group">
               <label>Dari Tanggal</label>
-              <input className="filter-input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <input className="filter-input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} suppressHydrationWarning />
             </div>
 
             <div className="filter-group">
               <label>Sampai Tanggal</label>
-              <input className="filter-input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <input className="filter-input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} suppressHydrationWarning />
             </div>
           </div>
 
@@ -649,6 +685,11 @@ export default function Home() {
                 setStatusFilter('all');
               }}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
               Reset Filter
             </button>
           </div>
@@ -666,7 +707,7 @@ export default function Home() {
           </div>
         ) : (
           <>
-            <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+            <table className="table-responsive-stack" style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr>
                   <th style={{ width: '50px', textAlign: 'center' }}>No</th>
@@ -704,10 +745,10 @@ export default function Home() {
                   const rowNumber = (page - 1) * ITEMS_PER_PAGE + index + 1;
                   return (
                     <tr key={surat.$id}>
-                      <td style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      <td data-label="No" style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         {rowNumber}
                       </td>
-                      <td style={{ padding: '1.25rem' }}>
+                      <td data-label="Status" style={{ padding: '1.25rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                           <span style={{ 
                             fontSize: '0.65rem', 
@@ -754,20 +795,20 @@ export default function Home() {
                           )}
                         </div>
                       </td>
-                    <td style={{ fontWeight: '600', color: 'var(--primary)', fontSize: '0.9rem' }}>
+                    <td data-label="Nomor Surat" style={{ fontWeight: '600', color: 'var(--primary)', fontSize: '0.9rem' }}>
                       {surat.nomorSurat}
                     </td>
-                    <td style={{ fontSize: '0.85rem' }}>{surat.tanggalSurat ? formatDate(surat.tanggalSurat) : '-'}</td>
-                    <td>
+                    <td data-label="Tanggal" style={{ fontSize: '0.85rem' }}>{surat.tanggalSurat ? formatDate(surat.tanggalSurat) : '-'}</td>
+                    <td data-label="Pembuat">
                       <span className="badge" style={{ backgroundColor: 'rgba(168, 199, 250, 0.1)', color: 'var(--primary)', fontWeight: '600' }}>
                         {surat.pembuatSurat}
                       </span>
                     </td>
-                    <td style={{ fontSize: '0.9rem' }}>{surat.tujuanSurat}</td>
-                    <td style={{ lineHeight: '1.5', fontSize: '0.9rem', color: 'var(--text-muted)', paddingRight: '2rem' }}>
+                    <td data-label="Tujuan" style={{ fontSize: '0.9rem' }}>{surat.tujuanSurat}</td>
+                    <td data-label="Perihal" style={{ lineHeight: '1.5', fontSize: '0.9rem', color: 'var(--text-muted)', paddingRight: '2rem' }}>
                       {surat.perihal || '-'}
                     </td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td data-label="Aksi" style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', alignItems: 'center' }}>
                         {surat.linkFile && (
                           <a 
@@ -855,36 +896,34 @@ export default function Home() {
             </table>
 
             {/* PAGINATION CONTROLS */}
-            <div style={{ 
-              padding: '1.5rem', 
-              borderTop: '1px solid var(--border-color)', 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              backgroundColor: 'rgba(255,255,255,0.02)'
-            }}>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Menampilkan <strong>{Math.min((page - 1) * ITEMS_PER_PAGE + 1, total)} - {Math.min(page * ITEMS_PER_PAGE, total)}</strong> dari <strong>{total}</strong> surat
+            <div className="pagination-controls">
+              <div className="pagination-info">
+                <strong>{Math.min((page - 1) * ITEMS_PER_PAGE + 1, total)}</strong>
+                <span> – </span>
+                <strong>{Math.min(page * ITEMS_PER_PAGE, total)}</strong>
+                <span> dari </span>
+                <strong>{total}</strong>
+                <span> surat</span>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div className="pagination-buttons">
                 <button 
                   className="btn-primary" 
-                  style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                  style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.82rem' }}
                   disabled={page === 1}
                   onClick={() => setPage(p => p - 1)}
                 >
-                  Sebelumnya
+                  ← Sebelumnya
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                  Halaman {page}
+                <div className="pagination-page-label">
+                  {page} / {Math.ceil(total / ITEMS_PER_PAGE)}
                 </div>
                 <button 
                   className="btn-primary" 
-                  style={{ width: 'auto', padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                  style={{ width: 'auto', padding: '0.45rem 1rem', fontSize: '0.82rem' }}
                   disabled={page * ITEMS_PER_PAGE >= total}
                   onClick={() => setPage(p => p + 1)}
                 >
-                  Selanjutnya
+                  Selanjutnya →
                 </button>
               </div>
             </div>

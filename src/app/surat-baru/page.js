@@ -282,12 +282,13 @@ export default function SuratBaru() {
           {/* BOOKING MODE TOGGLE */}
           <div className={`booking-toggle-container ${isBooking ? 'active' : ''}`}>
             <label className="booking-label">
-              <input 
-                type="checkbox" 
-                checked={isBooking}
-                onChange={(e) => setIsBooking(e.target.checked)}
-                className="booking-checkbox"
-              />
+                <input 
+                  type="checkbox" 
+                  checked={isBooking}
+                  onChange={(e) => setIsBooking(e.target.checked)}
+                  className="booking-checkbox"
+                  suppressHydrationWarning
+                />
               Hanya Booking Nomor Surat
             </label>
             <p className="booking-description">
@@ -295,7 +296,7 @@ export default function SuratBaru() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          <div className="form-row-grid">
             <div className="form-group">
               <label>Tanggal Surat *</label>
               <input 
@@ -304,6 +305,7 @@ export default function SuratBaru() {
                 value={formData.tanggalSurat} 
                 onChange={handleChange} 
                 required
+                suppressHydrationWarning
               />
             </div>
             <div className="form-group">
@@ -316,7 +318,11 @@ export default function SuratBaru() {
                 placeholder="001"
                 required
                 style={duplicateWarning ? { borderColor: '#ff4444', backgroundColor: 'rgba(255,68,68,0.1)' } : {}}
+                suppressHydrationWarning
               />
+              <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
+                Nomor urut otomatis disesuaikan berdasarkan data terakhir di tahun ini.
+              </small>
               {duplicateWarning && (
                 <div style={{ color: '#ff4444', fontSize: '0.8rem', marginTop: '0.3rem', fontWeight: 'bold' }}>
                   ⚠️ {duplicateWarning}
@@ -325,7 +331,7 @@ export default function SuratBaru() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          <div className="form-row-grid">
             <div className="form-group">
               <label>Jenis Surat</label>
               <select name="jenisSurat" value={formData.jenisSurat} onChange={handleChange}>
@@ -340,7 +346,7 @@ export default function SuratBaru() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          <div className="form-row-grid">
             <div className="form-group">
               <label>Identitas Pembuat (Otomatis)</label>
               <input 
@@ -349,6 +355,7 @@ export default function SuratBaru() {
                 value={formData.pembuatSurat} 
                 disabled
                 style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed', color: 'var(--primary)', fontWeight: 'bold' }}
+                suppressHydrationWarning
               />
               <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Nama Anda terekam untuk sistem notifikasi booking.</small>
             </div>
@@ -374,6 +381,7 @@ export default function SuratBaru() {
                 placeholder="Masukkan tujuan surat"
                 required={!isBooking}
                 style={isBooking ? { opacity: 0.7 } : {}}
+                suppressHydrationWarning
               />
             </div>
           </div>
