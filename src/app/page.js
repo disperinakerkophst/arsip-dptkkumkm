@@ -61,6 +61,7 @@ export default function Home() {
   const [bookingAlert, setBookingAlert] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'complete', 'booking'
   const [jenisOptions, setJenisOptions] = useState([{ label: 'Semua Jenis', value: '' }]);
+  const [showFilters, setShowFilters] = useState(false);
   const [jenisMap, setJenisMap] = useState({});
   const searchInputRef = useRef(null);
   const tableRef = useRef(null);
@@ -375,63 +376,28 @@ export default function Home() {
             </p>
             
             {bookingAlert > 0 && (
-              <div 
-                className="alert-glass" 
-                style={{ 
-                  marginTop: '1.5rem', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '1.5rem', 
-                  padding: '1.25rem 2rem',
-                  background: 'rgba(255, 193, 7, 0.1)',
-                  border: '1px solid rgba(255, 193, 7, 0.3)',
-                  borderRadius: '16px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-                  animation: 'alertPulse 2s infinite ease-in-out'
-                }}
-              >
-                <style>{`
-                  @keyframes alertPulse {
-                    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.4); }
-                    70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); }
-                    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
-                  }
-                `}</style>
-                <div style={{ backgroundColor: 'rgba(255, 193, 7, 0.2)', padding: '0.75rem', borderRadius: '50%', flexShrink: 0 }}>
+              <div className="booking-alert-banner">
+                <div className="booking-alert-icon">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffc107" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
                     <line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>
                   </svg>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <h4 style={{ margin: 0, color: '#ffc107', fontSize: '1.2rem', fontWeight: '800' }}>⚠️ Peringatan Booking Nomor</h4>
-                  <p style={{ margin: '0.25rem 0 0', color: 'rgba(255,255,255,0.85)', fontSize: '0.95rem', fontWeight: '500' }}>
+                <div className="booking-alert-content">
+                  <h4>Peringatan Booking Nomor</h4>
+                  <p>
                     Anda memiliki <strong>{bookingAlert}</strong> nomor surat yang belum dilengkapi berkas PDF-nya.
                   </p>
                 </div>
                 <button 
+                  className="btn-complete-now"
                   onClick={() => {
                     setStatusFilter('booking');
-                    // Jika pembuat_surat, filter punya dia sendiri. Jika admin, tampilkan semua.
                     setSearch(role === 'pembuat_surat' ? (user?.name || '') : '');
                     if (tableRef.current) {
                       window.scrollTo({ top: tableRef.current.offsetTop - 100, behavior: 'smooth' });
                     }
                   }}
-                  style={{ 
-                    backgroundColor: '#ffc107', 
-                    color: '#121212', 
-                    border: 'none', 
-                    padding: '0.8rem 1.5rem', 
-                    borderRadius: '10px', 
-                    fontWeight: '800', 
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 15px rgba(255, 193, 7, 0.4)',
-                    transition: 'transform 0.2s ease',
-                    whiteSpace: 'nowrap'
-                  }}
-                  onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-                  onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                 >
                   Lengkapi Sekarang
                 </button>
@@ -595,72 +561,97 @@ export default function Home() {
       </div>
 
       {/* SEARCH & FILTERS BAR */}
-      <div className="card" style={{ marginBottom: '2rem', padding: 'var(--mobile-card-padding, 1.5rem)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', alignItems: 'end' }}>
-          
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Pencarian Kata Kunci</label>
-            <input 
-              ref={searchInputRef}
-              type="text" 
-              placeholder="Cari perihal, nomor, atau tujuan..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+      <div className="filter-card">
+        <div className="filter-mobile-header" onClick={() => setShowFilters(!showFilters)}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            <span>Filter & Pencarian</span>
           </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Status Berkas</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">Semua Status</option>
-              <option value="complete">Lengkap (Ada File)</option>
-              <option value="booking">Booking (Belum Ada File)</option>
-            </select>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Kategori Jenis Surat</label>
-            <select value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)}>
-              {jenisOptions.map(j => <option key={j.value} value={j.value}>{j.label}</option>)}
-            </select>
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Dari Tanggal</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Sampai Tanggal</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-          </div>
-
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', alignSelf: 'center', marginRight: '0.5rem' }}>Pilih Triwulan:</span>
-          {['1', '2', '3', '4'].map(q => (
-            <button 
-              key={q} 
-              className="badge" 
-              onClick={() => handleQuarter(q)}
-              style={{ cursor: 'pointer', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-main)' }}
-            >
-              Triwulan {q}
-            </button>
-          ))}
-          <button 
-            className="badge" 
-            onClick={() => { 
-              setStartDate(''); 
-              setEndDate(''); 
-              setJenisFilter(''); 
-              setSearch(''); 
-              setStatusFilter('all');
-            }}
-            style={{ cursor: 'pointer', border: '1px solid var(--error)', background: 'rgba(242, 184, 181, 0.05)', color: 'var(--error)', marginLeft: 'auto', transition: 'all 0.2s' }}
+          <svg 
+            className={showFilters ? 'rotate' : ''} 
+            width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
           >
-            Reset Filter
-          </button>
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+
+        <div className={`filter-expandable ${showFilters ? 'show' : ''}`}>
+          <div className="filter-grid">
+            <div className="filter-group">
+              <label>Pencarian</label>
+              <input 
+                ref={searchInputRef}
+                type="text" 
+                className="filter-input"
+                placeholder="Cari perihal, nomor, atau tujuan..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="filter-group">
+              <label>Status Berkas</label>
+              <select className="filter-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="all">Semua Status</option>
+                <option value="complete">Lengkap</option>
+                <option value="booking">Booking</option>
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Kategori Jenis</label>
+              <select className="filter-select" value={jenisFilter} onChange={(e) => setJenisFilter(e.target.value)}>
+                {jenisOptions.map(j => <option key={j.value} value={j.value}>{j.label}</option>)}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Dari Tanggal</label>
+              <input className="filter-input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+
+            <div className="filter-group">
+              <label>Sampai Tanggal</label>
+              <input className="filter-input" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="quick-filter-bar">
+            <span className="quick-filter-label">Triwulan:</span>
+            {['1', '2', '3', '4'].map(q => {
+              const year = new Date().getFullYear();
+              let qStart, qEnd;
+              if (q === '1') { qStart = `${year}-01-01`; qEnd = `${year}-03-31`; }
+              else if (q === '2') { qStart = `${year}-04-01`; qEnd = `${year}-06-30`; }
+              else if (q === '3') { qStart = `${year}-07-01`; qEnd = `${year}-09-30`; }
+              else if (q === '4') { qStart = `${year}-10-01`; qEnd = `${year}-12-31`; }
+              
+              const isActive = startDate === qStart && endDate === qEnd;
+              
+              return (
+                <button 
+                  key={q} 
+                  className={`badge-filter ${isActive ? 'active' : ''}`}
+                  onClick={() => handleQuarter(q)}
+                >
+                  TW {q}
+                </button>
+              );
+            })}
+            
+            <button 
+              className="btn-reset-filter"
+              onClick={() => { 
+                setStartDate(''); 
+                setEndDate(''); 
+                setJenisFilter(''); 
+                setSearch(''); 
+                setStatusFilter('all');
+              }}
+            >
+              Reset Filter
+            </button>
+          </div>
         </div>
       </div>
 

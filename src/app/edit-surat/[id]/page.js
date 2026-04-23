@@ -61,6 +61,8 @@ export default function EditSurat() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const padZero = (num) => num.toString().padStart(3, '0');
 
@@ -233,8 +235,10 @@ export default function EditSurat() {
 
       await logActivity(user?.name, `Mengubah data/memperbarui file surat (${fullNomorSurat})`);
 
-      setSuccess(`Surat berhasil diupdate dengan Nomor: ${fullNomorSurat}`);
-      setTimeout(() => router.push('/'), 2000);
+      setShowModal(true);
+      setTimeout(() => {
+        if (!showModal) router.push('/');
+      }, 10000);
 
     } catch (err) {
       console.error(err);
@@ -242,6 +246,12 @@ export default function EditSurat() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(fullNomorSurat);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
   };
 
   if (authLoading || !user) {
@@ -253,29 +263,22 @@ export default function EditSurat() {
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <div className="main-content-inner">
+      <div className="page-header">
         <button 
           onClick={() => router.back()} 
-          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+          className="btn-back"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
           Kembali
         </button>
-        <h2 style={{ margin: 0 }}>Edit Detail Surat</h2>
+        <h2 className="page-title" style={{ margin: 0 }}>Edit Detail Surat</h2>
       </div>
       
       <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div style={{ 
-          background: 'rgba(255,255,255,0.05)', 
-          padding: '1.5rem', 
-          borderRadius: '12px', 
-          marginBottom: '2rem',
-          border: '1px solid rgba(255,255,255,0.1)',
-          textAlign: 'center'
-        }}>
-          <span style={{ fontSize: '0.9rem', color: '#888', display: 'block', marginBottom: '0.5rem' }}>Pratinjau Nomor Surat:</span>
-          <strong style={{ fontSize: '1.4rem', letterSpacing: '1px', color: '#fff' }}>{fullNomorSurat}</strong>
+        <div className="preview-number-box">
+          <span>Pratinjau Nomor Surat:</span>
+          <strong>{fullNomorSurat}</strong>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
@@ -396,6 +399,47 @@ export default function EditSurat() {
           </button>
         </form>
       </div>
+
+      {/* SUCCESS MODAL */}
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <h3 className="modal-title">Perubahan Berhasil Disimpan!</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              Data surat telah diperbarui dalam sistem.
+            </p>
+            
+            <div className="modal-number-box">
+              <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Nomor Surat:</span>
+              <span className="modal-number">{fullNomorSurat}</span>
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn-copy" onClick={handleCopy}>
+                {copySuccess ? (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Tersalin!
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Salin Nomor Surat
+                  </>
+                )}
+              </button>
+              <button className="btn-close-modal" onClick={() => router.push('/')}>
+                Kembali ke Beranda
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

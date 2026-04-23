@@ -49,6 +49,8 @@ export default function SuratBaru() {
   const [success, setSuccess] = useState('');
   const [isBooking, setIsBooking] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Set initial date to today on mount
   useEffect(() => {
@@ -243,8 +245,11 @@ export default function SuratBaru() {
 
       await logActivity(user?.name, `Membuat arsip surat baru (${fullNomorSurat}) mode: ${isBooking ? 'Booking' : 'Lengkap'}`);
 
-      setSuccess(`Surat berhasil disimpan dengan Nomor: ${fullNomorSurat}`);
-      setTimeout(() => router.push('/'), 2000);
+      setShowModal(true);
+      // Remove the direct redirect, user will close modal or be redirected after delay
+      setTimeout(() => {
+        if (!showModal) router.push('/');
+      }, 10000); // 10s auto redirect if modal left open
 
     } catch (err) {
       console.error(err);
@@ -254,21 +259,20 @@ export default function SuratBaru() {
     }
   };
 
+  const handleCopy = () => {
+    navigator.clipboard.writeText(fullNomorSurat);
+    setCopySuccess(true);
+    setTimeout(() => setCopySuccess(false), 2000);
+  };
+
   return (
-    <div>
-      <h2>Penginputan Surat Baru</h2>
+    <div className="main-content-inner">
+      <h2 className="page-title">Penginputan Surat Baru</h2>
       
       <div className="card" style={{ marginTop: '1.5rem' }}>
-        <div style={{ 
-          background: 'rgba(255,255,255,0.05)', 
-          padding: '1.5rem', 
-          borderRadius: '12px', 
-          marginBottom: '2rem',
-          border: '1px solid rgba(255,255,255,0.1)',
-          textAlign: 'center'
-        }}>
-          <span style={{ fontSize: '0.9rem', color: '#888', display: 'block', marginBottom: '0.5rem' }}>Pratinjau Nomor Surat:</span>
-          <strong style={{ fontSize: '1.4rem', letterSpacing: '1px', color: '#fff' }}>{fullNomorSurat}</strong>
+        <div className="preview-number-box">
+          <span>Pratinjau Nomor Surat:</span>
+          <strong>{fullNomorSurat}</strong>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
@@ -276,17 +280,17 @@ export default function SuratBaru() {
         
         <form onSubmit={handleSubmit}>
           {/* BOOKING MODE TOGGLE */}
-          <div style={{ padding: '1rem 1.25rem', background: isBooking ? 'rgba(255, 193, 7, 0.1)' : 'rgba(255,255,255,0.02)', borderRadius: '10px', marginBottom: '1.5rem', border: isBooking ? '1px solid rgba(255, 193, 7, 0.4)' : '1px solid rgba(255,255,255,0.05)', transition: 'all 0.3s ease' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, color: isBooking ? '#ffc107' : 'var(--text-main)', cursor: 'pointer', fontSize: '1.05rem' }}>
+          <div className={`booking-toggle-container ${isBooking ? 'active' : ''}`}>
+            <label className="booking-label">
               <input 
                 type="checkbox" 
                 checked={isBooking}
                 onChange={(e) => setIsBooking(e.target.checked)}
-                style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#ffc107' }}
+                className="booking-checkbox"
               />
-              <strong style={{ letterSpacing: '0.5px' }}>Hanya Booking Nomor Surat</strong>
+              Hanya Booking Nomor Surat
             </label>
-            <p style={{ margin: '0.5rem 0 0 2rem', fontSize: '0.85rem', color: isBooking ? 'rgba(255, 255, 255, 0.8)' : 'var(--text-muted)' }}>
+            <p className="booking-description">
               Abaikan pengunggahan file dan isi bidang opsional secara menyusul nanti. Berguna untuk mengamankan nomor urut dengan cepat selagi draf surat diproses.
             </p>
           </div>
@@ -407,6 +411,47 @@ export default function SuratBaru() {
           </button>
         </form>
       </div>
+
+      {/* SUCCESS MODAL */}
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <h3 className="modal-title">Surat Berhasil Diarsip!</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              Nomor surat Anda telah berhasil di-input ke sistem.
+            </p>
+            
+            <div className="modal-number-box">
+              <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Nomor Surat Resmi:</span>
+              <span className="modal-number">{fullNomorSurat}</span>
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn-copy" onClick={handleCopy}>
+                {copySuccess ? (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Tersalin!
+                  </>
+                ) : (
+                  <>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    Salin Nomor Surat
+                  </>
+                )}
+              </button>
+              <button className="btn-close-modal" onClick={() => router.push('/')}>
+                Kembali ke Beranda
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

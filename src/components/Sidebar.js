@@ -10,6 +10,7 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
   const [highlightLogin, setHighlightLogin] = useState(false);
   const [openDropdown, setOpenDropdown] = useState(null); // 'surat', 'sistem'
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -69,9 +70,27 @@ export default function Sidebar() {
         </div>
       </Link>
 
-      <nav className="nav-links">
+      <button 
+        className="mobile-hamburger" 
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        aria-label="Toggle Menu"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {isMenuOpen ? (
+            <path d="M18 6L6 18M6 6l12 12" />
+          ) : (
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          )}
+        </svg>
+      </button>
+
+      <nav className={`nav-links ${isMenuOpen ? 'show' : ''}`}>
         {/* 1. Beranda */}
-        <Link href="/" className={`nav-link ${pathname === '/' ? 'active' : ''}`} onClick={handleScrollToTop}>
+        <Link 
+          href="/" 
+          className={`nav-link ${pathname === '/' ? 'active' : ''}`} 
+          onClick={(e) => { handleScrollToTop(e); setIsMenuOpen(false); }}
+        >
           Beranda
         </Link>
 
@@ -99,7 +118,7 @@ export default function Sidebar() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
               Riwayat Surat Keluar
             </Link>
-            <Link href="/template-surat" className={`dropdown-link ${pathname === '/template-surat' ? 'active' : ''}`} onClick={() => setOpenDropdown(null)}>
+            <Link href="/template-surat" className={`dropdown-link ${pathname === '/template-surat' ? 'active' : ''}`} onClick={() => { setOpenDropdown(null); setIsMenuOpen(false); }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><rect x="2" y="7" width="20" height="13" rx="2" ry="2"/><rect x="5" y="11" width="14" height="2"/></svg>
               Template Surat
             </Link>
@@ -108,7 +127,7 @@ export default function Sidebar() {
 
         {/* 3. Laporan */}
         {user && role !== 'pembuat_surat' && (
-          <Link href="/laporan" className={`nav-link ${pathname === '/laporan' ? 'active' : ''}`}>
+          <Link href="/laporan" className={`nav-link ${pathname === '/laporan' ? 'active' : ''}`} onClick={() => setIsMenuOpen(false)}>
             Laporan
           </Link>
         )}
@@ -136,7 +155,7 @@ export default function Sidebar() {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                 Klasifikasi & Jenis Surat
               </Link>
-              <Link href="/audit-log" className={`dropdown-link ${pathname === '/audit-log' ? 'active' : ''}`} onClick={() => setOpenDropdown(null)}>
+              <Link href="/audit-log" className={`dropdown-link ${pathname === '/audit-log' ? 'active' : ''}`} onClick={() => { setOpenDropdown(null); setIsMenuOpen(false); }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 Audit Log
               </Link>
@@ -158,6 +177,7 @@ export default function Sidebar() {
         ) : (
           <Link href="/login" 
             className={`nav-link ${highlightLogin ? 'login-highlight-anim' : ''}`} 
+            onClick={() => setIsMenuOpen(false)}
             style={{ 
               border: '1px solid rgba(168, 199, 250, 0.2)', 
               padding: '0.4rem 1.25rem',
