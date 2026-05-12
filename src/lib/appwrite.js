@@ -1,7 +1,12 @@
 import { Client, Databases, Account } from 'appwrite';
 
+// Selalu gunakan endpoint langsung dari env var.
+// Proxy /api/appwrite hanya berlaku di browser saat production (Vercel CORS),
+// tapi tidak valid di sisi server (SSR/Turbopack) karena bukan URL absolut.
+const APPWRITE_ENDPOINT = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1';
+
 const client = new Client()
-    .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
+    .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID);
 
 export const databases = new Databases(client);

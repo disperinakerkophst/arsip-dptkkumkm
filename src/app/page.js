@@ -86,7 +86,7 @@ export default function Home() {
         databases.listDocuments(DATABASE_ID, COLLECTION_SURAT_ID, [Query.orderDesc('noUrut'), Query.limit(1)]),
         databases.listDocuments(DATABASE_ID, COLLECTION_AUDIT_ID, [Query.orderDesc('$createdAt'), Query.limit(20)]),
         databases.listDocuments(DATABASE_ID, COLLECTION_SURAT_ID, [Query.greaterThanEqual('tanggalSurat', startOfYear), Query.limit(500)]),
-        databases.listDocuments(DATABASE_ID, COLLECTION_USERS_ID, [Query.equal('role', 'superadmin'), Query.limit(100)]).catch(() => ({ documents: [] })),
+        databases.listDocuments(DATABASE_ID, COLLECTION_USERS_ID, [Query.startsWith('role', 'superadmin'), Query.limit(100)]).catch(() => ({ documents: [] })),
         databases.listDocuments(DATABASE_ID, COLLECTION_JENIS_ID, [Query.limit(100)]).catch(() => ({ documents: [] }))
       ]);
 
@@ -98,7 +98,11 @@ export default function Home() {
         setJenisMap(newMap);
       }
 
-      const superAdminNames = saRes.documents.map(d => d.nama);
+      // Parse nama superadmin (Format: Username|DisplayName|Email|Password)
+      const saInfo = saRes.documents.map(d => {
+        const parts = (d.nama || '').split('|');
+        return parts.length >= 4 ? [parts[0], parts[1]] : [d.nama];
+      }).flat();
 
       setDashboardStats({
         tahunIni: resTahun.total,
@@ -107,9 +111,16 @@ export default function Home() {
         lastNumber: resLastNum.documents.length > 0 ? resLastNum.documents[0].nomorSurat : '-',
         loading: false
       });
-
+      
       const filteredActivities = actRes.documents
-        .filter(act => !superAdminNames.includes(act.username))
+        .filter(act => {
+          // Jika user adalah pembuat_surat (Pencatat), sembunyikan aktivitas superadmin
+          if (role === 'pembuat_surat') {
+            return !saInfo.includes(act.username);
+          }
+          // Selain itu (admin/superadmin), tampilkan semua
+          return true;
+        })
         .slice(0, 6);
       setActivities(filteredActivities);
 
@@ -236,7 +247,7 @@ export default function Home() {
 
   const handleDelete = async (id, nomorSurat) => {
     if (role === 'pembuat_surat') {
-      alert('Maaf, role Pembuat Surat tidak memiliki izin untuk menghapus arsip.');
+      alert('Maaf, role Pencatat Surat tidak memiliki izin untuk menghapus arsip.');
       return;
     }
     if(!window.confirm('Yakin ingin menghapus arsip surat ini? Riwayat data akan disimpan di audit log untuk pemulihan.')) return;

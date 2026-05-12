@@ -8,7 +8,11 @@ import { logActivity } from '@/lib/audit';
 
 export default function SuratBaru() {
   const router = useRouter();
-  const { user, bidang: userBidang, loading: authLoading } = useAuth();
+  const { user, role, bidang: userBidang, loading: authLoading } = useAuth();
+
+  // Cek apakah pembuat_surat punya dokumen booking yang belum diupload PDF-nya
+  const [blockingDoc, setBlockingDoc] = useState(null); // document yang menghambat
+  const [checkingBlock, setCheckingBlock] = useState(false);
   const [jenisOptions, setJenisOptions] = useState([]);
   const [klasifikasiOptions, setKlasifikasiOptions] = useState([]);
 
@@ -63,6 +67,33 @@ export default function SuratBaru() {
       }));
     }
   }, [user, userBidang]);
+
+  // Cek blocking: pembuat_surat tidak boleh request nomor baru jika ada dokumen lama tanpa PDF
+  useEffect(() => {
+    const checkBlockingDoc = async () => {
+      if (!user || role !== 'pembuat_surat') return;
+      setCheckingBlock(true);
+      try {
+        const result = await databases.listDocuments(
+          DATABASE_ID,
+          COLLECTION_SURAT_ID,
+          [
+            Query.equal('pembuatSurat', user.name || ''),
+            Query.orderDesc('$createdAt'),
+            Query.limit(10)
+          ]
+        );
+        // Cari dokumen milik user ini yang belum ada linkFile-nya
+        const unuploaded = result.documents.find(doc => !doc.linkFile);
+        setBlockingDoc(unuploaded || null);
+      } catch (err) {
+        console.error('Gagal memeriksa status dokumen sebelumnya:', err);
+      } finally {
+        setCheckingBlock(false);
+      }
+    };
+    checkBlockingDoc();
+  }, [user, role]);
 
   // Auth Protection Redirect
   useEffect(() => {
@@ -160,6 +191,77 @@ export default function SuratBaru() {
 
   if (authLoading || !user) {
     return <div style={{ padding: '3rem', textAlign: 'center' }}>Memverifikasi otorisasi Admin...</div>;
+  }
+
+  // Tampilkan layar blokir jika pembuat_surat punya dokumen tanpa PDF
+  if (role === 'pembuat_surat' && (checkingBlock || blockingDoc)) {
+    if (checkingBlock) {
+      return (
+        <div className="main-content-inner">
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', flexDirection: 'column', gap: '1rem', color: 'var(--text-muted)' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            </svg>
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+            Memeriksa status dokumen Anda...
+          </div>
+        </div>
+      );
+    }
+
+    if (blockingDoc) {
+      return (
+        <div className="main-content-inner">
+          <h2 className="page-title">Penginputan Surat Baru</h2>
+          <div className="card" style={{ marginTop: '1.5rem', border: '1px solid rgba(255, 68, 68, 0.4)', backgroundColor: 'rgba(255, 68, 68, 0.05)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '2rem', gap: '1.25rem' }}>
+              {/* Ikon blokir */}
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(255, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ff4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </svg>
+              </div>
+
+              <div>
+                <h3 style={{ margin: '0 0 0.5rem', color: '#ff4444', fontSize: '1.1rem' }}>Permintaan Nomor Baru Diblokir</h3>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '480px', lineHeight: 1.6 }}>
+                  Anda masih memiliki <strong style={{ color: 'var(--text-main)' }}>1 dokumen booking</strong> yang belum diunggah PDF-nya.
+                  Selesaikan unggahan dokumen tersebut terlebih dahulu sebelum meminta nomor surat baru.
+                </p>
+              </div>
+
+              {/* Info dokumen yang menghambat */}
+              <div style={{ width: '100%', maxWidth: '520px', backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', padding: '1rem 1.25rem', textAlign: 'left' }}>
+                <p style={{ margin: '0 0 0.4rem', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dokumen yang menghambat</p>
+                <p style={{ margin: '0 0 0.25rem', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--primary)' }}>{blockingDoc.nomorSurat}</p>
+                <p style={{ margin: '0 0 0.1rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  {blockingDoc.perihal || 'Tidak ada perihal'}
+                </p>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>
+                  Dibuat: {new Date(blockingDoc.$createdAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  onClick={() => router.push('/')}
+                  style={{ padding: '0.7rem 1.5rem', background: 'var(--primary)', color: '#000', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem' }}
+                >
+                  Pergi ke Riwayat & Upload PDF
+                </button>
+                <button
+                  onClick={() => router.push('/')}
+                  style={{ padding: '0.7rem 1.25rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border-color)', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '0.9rem' }}
+                >
+                  Kembali ke Beranda
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
   }
 
   const handleSubmit = async (e) => {

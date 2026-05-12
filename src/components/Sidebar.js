@@ -137,9 +137,16 @@ export default function Sidebar() {
         </div>
 
         {/* 3. Laporan */}
-        {user && role !== 'pembuat_surat' && (
+        {user && (
           <Link href="/laporan" className={`nav-link ${pathname === '/laporan' ? 'active' : ''}`} onClick={() => setIsMenuOpen(false)}>
             Laporan
+          </Link>
+        )}
+
+        {/* 3.5 Panduan Sistem */}
+        {user && (
+          <Link href="/walkthrough" className={`nav-link ${pathname === '/walkthrough' ? 'active' : ''}`} onClick={() => setIsMenuOpen(false)}>
+            Panduan Sistem
           </Link>
         )}
 

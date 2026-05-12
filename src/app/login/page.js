@@ -69,14 +69,14 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label>Alamat Email</label>
+            <label>Username</label>
             <input 
-              type="email" 
+              type="text" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@dinas.go.id"
+              placeholder="Masukkan username Anda"
               required
-              autoComplete="email"
+              autoComplete="username"
               suppressHydrationWarning
             />
           </div>

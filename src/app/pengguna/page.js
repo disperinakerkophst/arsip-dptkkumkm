@@ -20,10 +20,11 @@ export default function PenggunaPage() {
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
+    displayName: '',
     email: '',
     password: '',
-    role: 'admin',
-    bidang: 'SKE'
+    role: '',
+    bidang: ''
   });
 
   useEffect(() => {
@@ -83,13 +84,15 @@ export default function PenggunaPage() {
         await logActivity(user?.name, `Mengubah data pengguna: ${formData.username} menjadi role ${formData.role} (${formData.bidang})`);
         setSuccessMsg(`Berhasil memperbarui data Admin: ${formData.username}`);
         setEditingId(null);
-        setFormData({ username: '', email: '', password: '', role: 'admin', bidang: 'SKE' });
+        setFormData({ username: '', displayName: '', email: '', password: '', role: '', bidang: '' });
         fetchUsers();
       } else {
         // Create Mode
+        const finalEmail = formData.email || `${formData.username.toLowerCase().replace(/\s+/g, '.')}@hstkab.go.id`;
+        
         const newAccount = await account.create(
           ID.unique(),
-          formData.email,
+          finalEmail,
           formData.password,
           formData.username
         );
@@ -100,19 +103,23 @@ export default function PenggunaPage() {
           ID.unique(),
           {
             userId: newAccount.$id,
-            nama: formData.username,
+            nama: `${formData.username}|${formData.displayName || formData.username}|${finalEmail}|${formData.password}`,
             role: `${formData.role}[${formData.bidang}]`
           }
         );
         await logActivity(user?.name, `Menambahkan pengguna baru: ${formData.username} dengan role ${formData.role} (${formData.bidang})`);
 
         setSuccessMsg(`Berhasil mendaftarkan Admin: ${formData.username}`);
-        setFormData({ username: '', email: '', password: '', role: 'admin', bidang: 'SKE' });
+        setFormData({ username: '', displayName: '', email: '', password: '', role: '', bidang: '' });
         fetchUsers();
       }
     } catch (err) {
       console.error("Gagal menyimpan pengguna:", err);
-      setError(err.message || 'Gagal menyimpan data user.');
+      if (err.code === 409) {
+        setError('Email/Username ini sudah terdaftar di sistem Appwrite Auth. Jika Anda baru saja menghapus user dari tabel, Anda juga harus menghapusnya secara manual di Appwrite Console > Auth > Users agar bisa mendaftarkannya kembali dengan nama yang sama.');
+      } else {
+        setError(err.message || 'Gagal menyimpan data user.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -142,7 +149,7 @@ export default function PenggunaPage() {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setFormData({ username: '', email: '', password: '', role: 'admin', bidang: 'SKE' });
+    setFormData({ username: '', displayName: '', email: '', password: '', role: '', bidang: '' });
     setSuccessMsg('');
     setError('');
   };
@@ -208,26 +215,48 @@ export default function PenggunaPage() {
 
           <form onSubmit={handleSubmit} autoComplete="off">
             <div className="form-group">
-              <label>Panggilan Username</label>
+              <label>Username (Untuk Login)</label>
               <input 
                 type="text" 
                 value={formData.username} 
-                onChange={e => setFormData({...formData, username: e.target.value})} 
+                onChange={e => {
+                  const newUsername = e.target.value;
+                  const autoEmail = newUsername.toLowerCase().replace(/\s+/g, '.') + '@hstkab.go.id';
+                  setFormData({
+                    ...formData, 
+                    username: newUsername,
+                    email: (!formData.email || formData.email.endsWith('@hstkab.go.id') || formData.email.endsWith('@hst.local')) ? autoEmail : formData.email
+                  });
+                }} 
+                placeholder="cth: budi.h" 
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Nama Lengkap / Panggilan (Tampilan)</label>
+              <input 
+                type="text" 
+                value={formData.displayName} 
+                onChange={e => setFormData({...formData, displayName: e.target.value})} 
                 placeholder="cth: Budi Hartono" 
                 required 
               />
             </div>
             
             <div className="form-group" style={{ display: editingId ? 'none' : 'block' }}>
-              <label>Email Pengguna</label>
+              <label>Email (Opsional)</label>
               <input 
-                type="email" 
+                type="text" 
                 value={formData.email} 
                 onChange={e => setFormData({...formData, email: e.target.value})} 
-                placeholder="admin@hst.go.id" 
-                required={!editingId}
+                placeholder="Kosongkan jika ingin pakai username untuk login" 
+                required={false}
                 disabled={editingId}
               />
+              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                Jika kosong, sistem akan membuat email otomatis berdasarkan username.
+              </p>
             </div>
             
             <div className="form-group" style={{ display: editingId ? 'none' : 'block' }}>
@@ -248,8 +277,10 @@ export default function PenggunaPage() {
               <select 
                 value={formData.role} 
                 onChange={e => setFormData({...formData, role: e.target.value})}
+                required
               >
-                <option value="pembuat_surat">Pembuat Surat (Hanya Input & Booking)</option>
+                <option value="" disabled>-- Pilih Hak Akses --</option>
+                <option value="pembuat_surat">Pencatat Surat (Hanya Input & Booking)</option>
                 <option value="admin">Administrator Biasa (Surat & Rekap)</option>
                 <option value="superadmin">Superadmin (+Audit & Tambah User)</option>
               </select>
@@ -260,7 +291,9 @@ export default function PenggunaPage() {
               <select 
                 value={formData.bidang} 
                 onChange={e => setFormData({...formData, bidang: e.target.value})}
+                required
               >
+                <option value="" disabled>-- Pilih Bidang --</option>
                 <option value="SKE">Sekretariat (SKE)</option>
                 <option value="KEU">Keuangan (KEU)</option>
                 <option value="IND">Perindustrian (IND)</option>
@@ -280,7 +313,7 @@ export default function PenggunaPage() {
               ) : (
                 <button 
                   type="button" 
-                  onClick={() => setFormData({ username: '', email: '', password: '', role: 'admin', bidang: 'SKE' })} 
+                  onClick={() => setFormData({ username: '', displayName: '', email: '', password: '', role: '', bidang: '' })} 
                   style={{ flex: '0 0 auto', padding: '0.75rem 1rem', background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-muted)', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem' }}
                 >
                   Bersihkan
@@ -304,14 +337,42 @@ export default function PenggunaPage() {
                 <thead style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
                   <tr>
                     <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>Username</th>
-                    <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>Status Hak Akses</th>
+                    <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>Email & Password</th>
+                    <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>Role</th>
                     <th style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                     {users.map((u, idx) => {
-                      let displayRole = u.role || 'admin';
+                      let rawNama = u.nama || '';
+                      let rawRole = u.role || 'admin';
+                      
+                      let displayNama = rawNama;
+                      let username = '-';
+                      let email = '-';
+                      let password = '••••••••';
+
+                      // Parse format baru: nama = Username|DisplayName|Email|Password
+                      if (rawNama.includes('|')) {
+                        const parts = rawNama.split('|');
+                        if (parts.length >= 4) {
+                          username = parts[0];
+                          displayNama = parts[1];
+                          email = parts[2];
+                          password = parts[3];
+                        } else {
+                          // Legacy
+                          username = parts[0];
+                          displayNama = parts[0];
+                          email = parts[1];
+                          password = parts[2];
+                        }
+                      }
+
+                      let displayRole = rawRole;
                       let displayBidang = 'SKE';
+
+                      // Parse role dan bidang
                       if (displayRole.includes('[')) {
                         const parts = displayRole.split('[');
                         displayRole = parts[0];
@@ -320,7 +381,33 @@ export default function PenggunaPage() {
                       
                       return (
                         <tr key={u.$id} style={{ borderBottom: idx < users.length - 1 ? '1px dashed rgba(255,255,255,0.05)' : 'none' }}>
-                          <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{u.nama}</td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <div style={{ fontWeight: 'bold' }}>{displayNama}</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>User: @{username}</div>
+                          </td>
+                          <td style={{ padding: '0.75rem 1rem' }}>
+                            <div style={{ fontSize: '0.85rem' }}>{email}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                              <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 'mono' }}>
+                                {u.showPass ? password : '••••••••'}
+                              </span>
+                              <button 
+                                onClick={() => {
+                                  const newUsers = [...users];
+                                  newUsers[idx].showPass = !newUsers[idx].showPass;
+                                  setUsers(newUsers);
+                                }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                title={u.showPass ? "Sembunyikan" : "Lihat Password"}
+                              >
+                                {u.showPass ? (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                ) : (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                )}
+                              </button>
+                            </div>
+                          </td>
                           <td style={{ padding: '0.75rem 1rem' }}>
                             <span className="badge" style={
                               displayRole === 'superadmin' 
@@ -329,7 +416,7 @@ export default function PenggunaPage() {
                                 ? { backgroundColor: 'rgba(0,191,165,0.1)', color: '#00bfa5', border: '1px solid #00bfa5' }
                                 : { backgroundColor: 'rgba(168,199,250,0.1)', color: 'var(--primary)', border: '1px solid var(--primary)' }
                             }>
-                              {displayRole.replace('_', ' ').toUpperCase()}
+                              {displayRole === 'pembuat_surat' ? 'PENCATAT SURAT' : displayRole.replace('_', ' ').toUpperCase()}
                             </span>
                             <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                               ({displayBidang})

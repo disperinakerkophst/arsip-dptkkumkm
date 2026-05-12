@@ -20,8 +20,15 @@ const BIDANG_LABELS = {
   'KUMKM': 'Koperasi & UMKM'
 };
 
+// Helper top-level agar bisa digunakan di fetchLaporanData maupun generatePDF
+const getBidangFromNomor = (nomor) => {
+  if (!nomor) return 'UMUM';
+  const parts = nomor.split('/');
+  return parts[3] || 'UMUM';
+};
+
 export default function LaporanPage() {
-  const { user, role, loading: authLoading } = useAuth();
+  const { user, role, bidang: userBidang, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [tahunPilihan, setTahunPilihan] = useState([]);
@@ -35,6 +42,7 @@ export default function LaporanPage() {
   const [totalSurat, setTotalSurat] = useState(0);
   const [loading, setLoading] = useState(false);
   const [pdfPreview, setPdfPreview] = useState(null);
+  const [bidangFilter, setBidangFilter] = useState('all'); // 'all' | 'SKE' | 'KEU' | 'IND' | 'NAKER' | 'KUMKM'
 
   // State untuk penandatangan
   const [ttd, setTtd] = useState({
@@ -76,17 +84,23 @@ export default function LaporanPage() {
     if (!authLoading) {
       if (!user) {
         router.push('/login');
-      } else if (role === 'pembuat_surat') {
-        router.push('/');
       }
+      // pembuat_surat boleh akses — filter akan dikunci ke bidang mereka sendiri
     }
   }, [user, role, authLoading, router]);
+
+  // Auto-lock filter ke bidang sendiri jika role pembuat_surat
+  useEffect(() => {
+    if (role === 'pembuat_surat' && userBidang) {
+      setBidangFilter(userBidang);
+    }
+  }, [role, userBidang]);
 
   useEffect(() => {
     if (user && tahun && jenisSuratList.length >= 0) {
       fetchLaporanData();
     }
-  }, [tahun, bulan, user, jenisSuratList]);
+  }, [tahun, bulan, bidangFilter, user, jenisSuratList]);
 
   const fetchLaporanData = async () => {
     if (!tahun) return;
@@ -127,6 +141,13 @@ export default function LaporanPage() {
         } else {
           offset += 100;
         }
+      }
+
+      // Filter berdasarkan bidang jika bukan 'all'
+      if (bidangFilter !== 'all') {
+        allDocuments = allDocuments.filter(doc =>
+          getBidangFromNomor(doc.nomorSurat) === bidangFilter
+        );
       }
 
       setAllDocsForReport(allDocuments);
@@ -203,12 +224,8 @@ export default function LaporanPage() {
     const doc = new jsPDF('l', 'mm', 'a4');
     const isMonthly = bulan !== 'all';
     const periodName = isMonthly ? `${BULAN[parseInt(bulan)]} ${tahun}` : `Tahun ${tahun}`;
-
-    const getBidangFromNomor = (nomor) => {
-      if (!nomor) return 'UMUM';
-      const parts = nomor.split('/');
-      return parts[3] || 'UMUM';
-    };
+    const isBidangSpecific = bidangFilter !== 'all';
+    const bidangLabel = BIDANG_LABELS[bidangFilter] || bidangFilter;
 
     // Header
     // Note: Pastikan file logo_hst.png sudah ada di folder public/
@@ -233,7 +250,15 @@ export default function LaporanPage() {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text(`LAPORAN STATISTIK ARSIP SURAT KELUAR`, 148, 42, { align: 'center' });
-    doc.text(`PERIODE: ${periodName.toUpperCase()}`, 148, 48, { align: 'center' });
+    if (isBidangSpecific) {
+      doc.text(`BIDANG: ${bidangLabel.toUpperCase()}`, 148, 48, { align: 'center' });
+      doc.text(`PERIODE: ${periodName.toUpperCase()}`, 148, 54, { align: 'center' });
+    } else {
+      doc.text(`PERIODE: ${periodName.toUpperCase()}`, 148, 48, { align: 'center' });
+    }
+
+    // Geser startY jika judul pakai 2 baris (bidang spesifik)
+    const tableStartY = isBidangSpecific ? 61 : 55;
 
     // Table 1: Monthly Summary
     let mainTableData = [];
@@ -274,7 +299,7 @@ export default function LaporanPage() {
     autoTable(doc, {
       head: [["Bulan", "Total", ...jenisSuratList.map(j => j.code), "Lainnya"]],
       body: mainTableData,
-      startY: 55,
+      startY: tableStartY,
       theme: 'grid',
       styles: { fontSize: 8, cellPadding: 2 },
       margin: { bottom: 20 },
@@ -368,28 +393,30 @@ export default function LaporanPage() {
       headStyles: { fillColor: [46, 204, 113] }
     });
 
-    // Recap 3: Penempatan Bidang (Full Names)
-    const bidangCounts = {};
-    allDocsForReport.forEach(doc => {
-      const b = getBidangFromNomor(doc.nomorSurat);
-      bidangCounts[b] = (bidangCounts[b] || 0) + 1;
-    });
+    // Recap 3: Penempatan Bidang — tampilkan hanya jika laporan mencakup semua bidang
+    if (!isBidangSpecific) {
+      const bidangCounts = {};
+      allDocsForReport.forEach(d => {
+        const b = getBidangFromNomor(d.nomorSurat);
+        bidangCounts[b] = (bidangCounts[b] || 0) + 1;
+      });
 
-    const bidangRows = Object.entries(bidangCounts).map(([bidang, count]) => [
-      BIDANG_LABELS[bidang] || bidang,
-      count.toString(),
-      ((count/totalSurat)*100 || 0).toFixed(1) + '%'
-    ]);
+      const bidangRows = Object.entries(bidangCounts).map(([bidang, count]) => [
+        BIDANG_LABELS[bidang] || bidang,
+        count.toString(),
+        ((count / totalSurat) * 100 || 0).toFixed(1) + '%'
+      ]);
 
-    autoTable(doc, {
-      head: [['Bidang', 'Jumlah', '%']],
-      body: bidangRows,
-      startY: currentY,
-      margin: { left: 195, bottom: 20 },
-      tableWidth: 80,
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [155, 89, 182] }
-    });
+      autoTable(doc, {
+        head: [['Bidang', 'Jumlah', '%']],
+        body: bidangRows,
+        startY: currentY,
+        margin: { left: 195, bottom: 20 },
+        tableWidth: 80,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [155, 89, 182] }
+      });
+    }
 
     const recapFinalY = doc.lastAutoTable.finalY;
     
@@ -437,8 +464,9 @@ export default function LaporanPage() {
 
   const handleExportPDF = () => {
     const doc = generatePDF();
-    const periodName = bulan !== 'all' ? `${BULAN[parseInt(bulan)]} ${tahun}` : `Tahun ${tahun}`;
-    doc.save(`Laporan_Statistik_${periodName.replace(' ', '_')}.pdf`);
+    const periodName = bulan !== 'all' ? `${BULAN[parseInt(bulan)]}_${tahun}` : `Tahun_${tahun}`;
+    const bidangSuffix = bidangFilter !== 'all' ? `_${bidangFilter}` : '';
+    doc.save(`Laporan_Statistik${bidangSuffix}_${periodName}.pdf`);
   };
 
   useEffect(() => {
@@ -446,7 +474,7 @@ export default function LaporanPage() {
       const doc = generatePDF();
       setPdfPreview(doc.output('datauristring'));
     }
-  }, [dataLaporan, loading, ttd]);
+  }, [dataLaporan, loading, ttd, bidangFilter]);
 
   if (authLoading || !user) {
     return <div style={{ padding: '3rem', textAlign: 'center' }}>Memverifikasi otorisasi...</div>;
@@ -462,7 +490,7 @@ export default function LaporanPage() {
           <p style={{ color: 'var(--text-muted)', margin: 0 }}> Ringkasan penerbitan surat berdasarkan kategori. </p>
         </div>
         
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <select 
             value={bulan} 
             onChange={(e) => setBulan(e.target.value)}
@@ -480,23 +508,77 @@ export default function LaporanPage() {
             {tahunPilihan.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
 
-          {(role === 'superadmin' || role === 'admin') && (
+          {/* Filter Bidang */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <select 
+              value={bidangFilter} 
+              onChange={(e) => setBidangFilter(e.target.value)}
+              disabled={role === 'pembuat_surat'}
+              title={role === 'pembuat_surat' ? 'Anda hanya dapat melihat laporan bidang Anda sendiri' : ''}
+              style={{ 
+                padding: '0.5rem 1rem', 
+                borderRadius: '8px', 
+                background: role === 'pembuat_surat' ? 'rgba(255,255,255,0.03)' : 'rgba(168,199,250,0.08)', 
+                color: role === 'pembuat_surat' ? 'var(--text-muted)' : 'var(--primary)', 
+                border: '1px solid rgba(168,199,250,0.3)', 
+                fontWeight: '600',
+                cursor: role === 'pembuat_surat' ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <option value="all">Semua Bidang</option>
+              {Object.entries(BIDANG_LABELS).map(([code, label]) => (
+                <option key={code} value={code}>{label} ({code})</option>
+              ))}
+            </select>
+            {role === 'pembuat_surat' && (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                (dikunci ke bidang Anda)
+              </span>
+            )}
+          </div>
+
+          {(role === 'superadmin' || role === 'admin' || role === 'pembuat_surat') && (
             <button onClick={handleExportPDF} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              Unduh PDF
+              Unduh PDF{bidangFilter !== 'all' ? ` — ${BIDANG_LABELS[bidangFilter]}` : ''}
             </button>
           )}
         </div>
       </div>
 
+      {/* Info badge bidang aktif */}
+      {bidangFilter !== 'all' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1.25rem', borderRadius: '10px', background: 'rgba(168,199,250,0.07)', border: '1px solid rgba(168,199,250,0.25)', marginBottom: '1.5rem' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          <span style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '0.9rem' }}>
+            Filter Aktif: Bidang {BIDANG_LABELS[bidangFilter]} ({bidangFilter})
+          </span>
+          {role !== 'pembuat_surat' && (
+            <button 
+              onClick={() => setBidangFilter('all')}
+              style={{ marginLeft: 'auto', fontSize: '0.78rem', background: 'transparent', border: '1px solid rgba(168,199,250,0.3)', color: 'var(--text-muted)', padding: '0.2rem 0.75rem', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              × Hapus Filter
+            </button>
+          )}
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
         <div style={{ background: 'rgba(168, 199, 250, 0.05)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--primary)' }}>
           <div style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: '700' }}>
-            Total Surat ({bulan === 'all' ? tahun : BULAN[parseInt(bulan)] + ' ' + tahun})
+            Total Surat {bidangFilter !== 'all' ? `— ${BIDANG_LABELS[bidangFilter]}` : ''} ({bulan === 'all' ? tahun : BULAN[parseInt(bulan)] + ' ' + tahun})
           </div>
           <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--text-main)', marginTop: '0.5rem' }}>{totalSurat}</div>
         </div>

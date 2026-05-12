@@ -30,22 +30,43 @@ export const AuthProvider = ({ children }) => {
             );
             if (roleData.documents.length > 0) {
               const userData = roleData.documents[0];
-              const fullRole = userData.role || 'admin';
+              const rawNama = userData.nama || '';
+              const rawRole = userData.role || 'admin';
+              
+              // Format baru: nama = Username|DisplayName|Email|Password
+              let displayName = '';
+              let storedEmail = '';
+              
+              if (rawNama.includes('|')) {
+                const parts = rawNama.split('|');
+                // Format bisa 3 part atau 4 part
+                if (parts.length >= 4) {
+                  displayName = parts[1]; // Nama Panggilan
+                  storedEmail = parts[2];
+                } else {
+                  // Legacy format
+                  displayName = parts[0]; 
+                  storedEmail = parts[1];
+                }
+              } else {
+                displayName = rawNama;
+              }
 
-              // Update state user dengan nama dari database (agar jika diedit admin langsung berubah)
+              // Update state user
               setUser(prev => ({
                 ...prev,
-                name: userData.nama || prev.name
+                name: displayName || prev.name,
+                email: storedEmail || prev.email
               }));
               
-              // Cek jika ada bidang di dalam kurung, misal: pembuat_surat[SKE]
-              if (fullRole.includes('[') && fullRole.includes(']')) {
-                const parts = fullRole.split('[');
+              // Parse role dan bidang
+              if (rawRole.includes('[') && rawRole.includes(']')) {
+                const parts = rawRole.split('[');
                 setRole(parts[0]);
                 setBidang(parts[1].replace(']', ''));
               } else {
-                setRole(fullRole);
-                setBidang('SKE'); // Default
+                setRole(rawRole);
+                setBidang('SKE');
               }
             } else {
               setRole('publik');
@@ -64,8 +85,38 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
-    await account.createEmailPasswordSession(email, password);
+  const login = async (usernameOrEmail, password) => {
+    let finalEmail = usernameOrEmail;
+
+    // Jika input tidak mengandung '@', anggap sebagai username dan cari email-nya di database
+    if (!usernameOrEmail.includes('@')) {
+      try {
+        const userDoc = await databases.listDocuments(
+          DATABASE_ID,
+          COLLECTION_USERS_ID,
+          [Query.startsWith('nama', usernameOrEmail + '|'), Query.limit(1)]
+        );
+
+        if (userDoc.documents.length > 0) {
+          const rawNama = userDoc.documents[0].nama || '';
+          if (rawNama.includes('|')) {
+            const parts = rawNama.split('|');
+            // Jika 4 part (Username|Display|Email|Pass), email ada di index 2
+            // Jika 3 part (Username|Email|Pass), email ada di index 1
+            finalEmail = parts.length >= 4 ? parts[2] : parts[1];
+          } else {
+             finalEmail = `${usernameOrEmail.toLowerCase().replace(/\s+/g, '.')}@hstkab.go.id`;
+          }
+        } else {
+          throw new Error('Username tidak ditemukan.');
+        }
+      } catch (e) {
+        console.error("Lookup email gagal:", e);
+        throw e;
+      }
+    }
+
+    await account.createEmailPasswordSession(finalEmail, password);
     await checkUserStatus();
   };
 

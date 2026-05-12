@@ -79,7 +79,7 @@ export default function EditSurat() {
       try {
         const surat = await databases.getDocument(DATABASE_ID, COLLECTION_SURAT_ID, id);
         
-        // Proteksi Role Pembuat Surat: Hanya boleh edit punya sendiri
+        // Proteksi Role Pencatat Surat: Hanya boleh edit punya sendiri
         if (role === 'pembuat_surat' && surat.pembuatSurat !== user.name) {
           alert('Anda tidak memiliki izin untuk mengedit arsip milik orang lain.');
           router.push('/');
